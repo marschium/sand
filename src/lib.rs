@@ -5,6 +5,9 @@ use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::video::{Window, WindowContext};
 use sdl2::render::{Canvas, Texture, TextureCreator};
+use std::time::{Instant, Duration};
+
+mod game;
 
 const TEX_SIZE: u32 = 16;
 
@@ -13,8 +16,8 @@ pub fn dummy_texture<'a>(canvas: &mut Canvas<Window>, texture_creator: &'a Textu
     canvas.with_texture_canvas(&mut tex, |c| {
         for i in 0..TEX_SIZE {
             for j in 0..TEX_SIZE {
-                if (i + j) % 9 == 0 {
-                    c.set_draw_color(Color::RGB(255, 255, 0));
+                if i == 0 || j == 0 || i == TEX_SIZE - 1 || j == TEX_SIZE - 1 {
+                    c.set_draw_color(Color::RGB(255, 0, 0));
                 }
                 else{
                     c.set_draw_color(Color::RGB(0, 0, 0));
@@ -27,7 +30,8 @@ pub fn dummy_texture<'a>(canvas: &mut Canvas<Window>, texture_creator: &'a Textu
     Ok(tex)
 }
 
-const GRID_SIZE: i32 = 32;
+const GRID_SIZE: i32 = 8;
+const CELL_DRAW_SIZE: u32 = 32;
 
 pub fn start() {
     let sdl_context = sdl2::init().unwrap();
@@ -45,7 +49,14 @@ pub fn start() {
     let texture_creator = canvas.texture_creator();
     let tex = dummy_texture(&mut canvas, &texture_creator).unwrap();
 
+    let mut gs = game::GameState::new();
+
+    let mut frame_start = Instant::now();
+    let mut ms_since_update = 0u128;
+
     'running: loop {
+        frame_start = Instant::now();
+
         for event in event_pump.poll_iter() { 
             match event {
                 Event::Quit {..} |
@@ -56,20 +67,30 @@ pub fn start() {
             }
         }
 
+        // Update 60 times a second
+        if ms_since_update >= 16 {
+            ms_since_update = 0;
+            gs.update();
+        }
+
 
         canvas.clear();
+        canvas.set_draw_color(Color::RGB(255, 255, 255));
 
-        // for each cell in game draw the appropiate texture
-        //canvas.copy(&tex, None, Rect::new(0, 0, TEX_SIZE, TEX_SIZE)).unwrap();
-        for i in 0..GRID_SIZE {
-            for j in 0..GRID_SIZE {
-                canvas.copy(
-                    &tex,
-                    None,
-                    Rect::new(i * TEX_SIZE as i32, j * TEX_SIZE as i32, TEX_SIZE, TEX_SIZE)).unwrap();
+        for (c, i, j) in gs.changed_cells() {
+            match c {
+                game::Cell::Sand => {
+                    canvas.copy(
+                        &tex,
+                        None,
+                        Rect::new(i * CELL_DRAW_SIZE as i32, j * CELL_DRAW_SIZE as i32, CELL_DRAW_SIZE, CELL_DRAW_SIZE)).unwrap();
+                },
+                _ => {}
             }
         }
 
         canvas.present();
+
+        ms_since_update += frame_start.elapsed().as_millis();
     }
 }
