@@ -49,13 +49,18 @@ pub fn start() {
     let texture_creator = canvas.texture_creator();
     let tex = dummy_texture(&mut canvas, &texture_creator).unwrap();
 
-    let mut gs = game::GameState::new();
+    let mut read_state = game::GameState::new();
+    let mut write_state = game::GameState::new();
+    for i in 0..game::REGION_SIZE {
+        read_state.write_cell(game::Cell::Sand{delta: 1}, i , 0);
+    }
 
     let mut frame_start = Instant::now();
     let mut ms_since_update = 0u128;
 
     'running: loop {
         frame_start = Instant::now();
+        // TODO get constant framerate
 
         for event in event_pump.poll_iter() { 
             match event {
@@ -70,24 +75,30 @@ pub fn start() {
         // Update 60 times a second
         if ms_since_update >= 16 {
             ms_since_update = 0;
-            gs.update();
+            read_state.update(&mut write_state);
+            let tmp = read_state;
+            read_state = write_state;
+            write_state = tmp;
         }
 
 
         canvas.clear();
         canvas.set_draw_color(Color::RGB(255, 255, 255));
 
-        for (c, i, j) in gs.changed_cells() {
-            match c {
-                game::Cell::Sand => {
-                    canvas.copy(
-                        &tex,
-                        None,
-                        Rect::new(i * CELL_DRAW_SIZE as i32, j * CELL_DRAW_SIZE as i32, CELL_DRAW_SIZE, CELL_DRAW_SIZE)).unwrap();
-                },
-                _ => {}
+        for b in read_state.blocks.iter() {  // todo include offset in block
+            for (c, i, j) in b.cells() {
+                match c {
+                    game::Cell::Sand{..} => {
+                        canvas.copy(
+                            &tex,
+                            None,
+                            Rect::new((i * CELL_DRAW_SIZE) as i32, (j * CELL_DRAW_SIZE) as i32, CELL_DRAW_SIZE, CELL_DRAW_SIZE)).unwrap();
+                    },
+                    _ => {}
+                }
             }
         }
+        
 
         canvas.present();
 
