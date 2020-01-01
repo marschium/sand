@@ -51,8 +51,9 @@ pub fn start() {
 
     let mut read_state = game::GameState::new();
     let mut write_state = game::GameState::new();
-    for i in 0..game::REGION_SIZE {
+    for i in 0..(game::REGION_SIZE *2) {
         read_state.write_cell(game::Cell::Sand{delta: 1}, i , 0);
+        read_state.write_cell(game::Cell::Sand{delta: 1}, i , 8);
     }
 
     let mut frame_start = Instant::now();
@@ -72,8 +73,7 @@ pub fn start() {
             }
         }
 
-        // Update 60 times a second
-        if ms_since_update >= 16 {
+        if ms_since_update >= 250 {
             ms_since_update = 0;
             read_state.update(&mut write_state);
             let tmp = read_state;
@@ -85,14 +85,15 @@ pub fn start() {
         canvas.clear();
         canvas.set_draw_color(Color::RGB(255, 255, 255));
 
-        for b in read_state.blocks.iter() {  // todo include offset in block
+        for (pos, b) in read_state.blocks.iter() {  // todo include offset in block
+            let block_offset = (pos.0 * game::REGION_SIZE as u32, pos.1 * game::REGION_SIZE as u32);
             for (c, i, j) in b.cells() {
                 match c {
                     game::Cell::Sand{..} => {
                         canvas.copy(
                             &tex,
                             None,
-                            Rect::new((i * CELL_DRAW_SIZE) as i32, (j * CELL_DRAW_SIZE) as i32, CELL_DRAW_SIZE, CELL_DRAW_SIZE)).unwrap();
+                            Rect::new(((block_offset.0 + i) * CELL_DRAW_SIZE) as i32, ((block_offset.1 + j) * CELL_DRAW_SIZE) as i32, CELL_DRAW_SIZE, CELL_DRAW_SIZE)).unwrap();
                     },
                     _ => {}
                 }
@@ -102,6 +103,10 @@ pub fn start() {
 
         canvas.present();
 
-        ms_since_update += frame_start.elapsed().as_millis();
+        let mut d = frame_start.elapsed().as_millis();
+        if d == 0 {
+            d = 1;
+        }
+        ms_since_update += d;
     }
 }

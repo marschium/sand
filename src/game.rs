@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 #[derive(Copy, Clone)]
 pub enum Cell {
     Air,
@@ -30,7 +32,7 @@ impl CellBlock {
 }
 
 pub struct GameState {
-    pub blocks: Vec<CellBlock>,
+    pub blocks : HashMap<(u32, u32), CellBlock>
 }
 
 pub const REGION_SIZE: usize = 8;
@@ -38,23 +40,30 @@ pub const REGION_SIZE: usize = 8;
 impl GameState {
 
     pub fn new() -> Self {
-        let mut blocks = vec!();
-        blocks.push(CellBlock::new()); // TODO track position
+        let mut blocks = HashMap::new();
+        blocks.insert((0, 0), CellBlock::new());
+        blocks.insert((1, 0), CellBlock::new());
+        blocks.insert((0, 1), CellBlock::new());
+        blocks.insert((1, 1), CellBlock::new());
         GameState {
             blocks,
+
         }
     }
 
     pub fn reset_block(&mut self, x: u32, y: u32) {
-        // TODO use position
-        self.blocks = Vec::new();
-        self.blocks.push(CellBlock::new());
+        // TODO index blocks based on global x/y instead of block x/y?
+        self.blocks.insert((x, y), CellBlock::new());
     }
 
     pub fn write_cell(&mut self, cell: Cell, x: usize, y: usize) {
-        // TODO use block offset
-        let mut b = self.blocks.first_mut().unwrap();
-        b.cells[(x + (y * REGION_SIZE))] = cell;
+        // TODO if not there, create block
+        let bx = (x / REGION_SIZE) as u32;
+        let by = (y / REGION_SIZE) as u32;
+        let ix = x % REGION_SIZE;
+        let iy = y % REGION_SIZE;
+        let b = self.blocks.get_mut(&(bx,by)).unwrap();
+        b.cells[(ix + (iy * REGION_SIZE))] = cell;
     }
 
     pub fn update(&self, write_state: &mut GameState) {
@@ -63,8 +72,9 @@ impl GameState {
         // TODO copy unchanged blocks straight over
         // TODO what about updates that span blocks?
 
-        for block in self.blocks.iter() {
-            write_state.reset_block(0, 0);
+        for (pos, block) in self.blocks.iter() {
+            write_state.reset_block(pos.0, pos.1);
+            let block_offset = (pos.0 * REGION_SIZE as u32, pos.1 * REGION_SIZE as u32);
             for (c, i, j) in block.cells() {
                 match c {
                     Cell::Sand{delta} => {
@@ -76,7 +86,7 @@ impl GameState {
                         if nj == 7 {
                             d = -1
                         }
-                        write_state.write_cell(Cell::Sand{delta: d}, i as usize, nj as usize);
+                        write_state.write_cell(Cell::Sand{delta: d}, (i + block_offset.0) as usize, (nj + block_offset.1 as i32) as usize);
                     }
                     _ => {}
                 }
