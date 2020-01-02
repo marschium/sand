@@ -31,7 +31,7 @@ pub fn dummy_texture<'a>(canvas: &mut Canvas<Window>, texture_creator: &'a Textu
 }
 
 const GRID_SIZE: i32 = 8;
-const CELL_DRAW_SIZE: u32 = 32;
+const CELL_DRAW_SIZE: i32 = 32;
 
 pub fn start() {
     let sdl_context = sdl2::init().unwrap();
@@ -51,10 +51,15 @@ pub fn start() {
 
     let mut read_state = game::GameState::new();
     let mut write_state = game::GameState::new();
-    for i in 0..(game::REGION_SIZE *2) {
-        read_state.write_cell(game::Cell::Sand{delta: 1}, i , 0);
-        read_state.write_cell(game::Cell::Sand{delta: 1}, i , 8);
-    }
+    
+    // TEST SETUP
+    read_state.write_cell(game::Cell::Sand{delta: (1, 0)}, 0, 0, true);
+    read_state.write_cell(game::Cell::Sand{delta: (-1, 0)}, 15, 15, true);
+    read_state.write_cell(game::Cell::OtherSand, 3, 3, false);
+    read_state.write_cell(game::Cell::OtherSand, 12, 3, false);
+    read_state.write_cell(game::Cell::OtherSand, 3, 12, false);
+    read_state.write_cell(game::Cell::OtherSand, 12, 12, false);
+    // TEST
 
     let mut frame_start = Instant::now();
     let mut ms_since_update = 0u128;
@@ -73,9 +78,10 @@ pub fn start() {
             }
         }
 
-        if ms_since_update >= 250 {
+        if ms_since_update >= 1000 {
             ms_since_update = 0;
-            read_state.update(&mut write_state);
+            game::update(&read_state, &mut write_state);
+            println!("---------UPDATE END--------------");
             let tmp = read_state;
             read_state = write_state;
             write_state = tmp;
@@ -86,14 +92,14 @@ pub fn start() {
         canvas.set_draw_color(Color::RGB(255, 255, 255));
 
         for (pos, b) in read_state.blocks.iter() {  // todo include offset in block
-            let block_offset = (pos.0 * game::REGION_SIZE as u32, pos.1 * game::REGION_SIZE as u32);
+            let block_offset = (pos.0 * game::REGION_SIZE, pos.1 * game::REGION_SIZE);
             for (c, i, j) in b.cells() {
                 match c {
-                    game::Cell::Sand{..} => {
+                    game::Cell::Sand{..} | game::Cell::OtherSand => {
                         canvas.copy(
                             &tex,
                             None,
-                            Rect::new(((block_offset.0 + i) * CELL_DRAW_SIZE) as i32, ((block_offset.1 + j) * CELL_DRAW_SIZE) as i32, CELL_DRAW_SIZE, CELL_DRAW_SIZE)).unwrap();
+                            Rect::new(((block_offset.0 + i) * CELL_DRAW_SIZE), ((block_offset.1 + j) * CELL_DRAW_SIZE), CELL_DRAW_SIZE as u32, CELL_DRAW_SIZE as u32)).unwrap();
                     },
                     _ => {}
                 }
