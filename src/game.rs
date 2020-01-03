@@ -1,10 +1,9 @@
 use std::collections::HashMap;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum Cell {
     Air,
-    Sand{ delta: (i32, i32)},
-    OtherSand,
+    Sand,
 }
 
 pub struct CellBlock {
@@ -15,7 +14,7 @@ pub struct CellBlock {
 impl CellBlock {
 
     pub fn new() -> Self {
-        let mut cells = vec![Cell::Air; (REGION_SIZE * REGION_SIZE) as usize];
+        let cells = vec![Cell::Air; (REGION_SIZE * REGION_SIZE) as usize];
         CellBlock {
             cells,
             dirty: true
@@ -26,7 +25,6 @@ impl CellBlock {
         let mut v = Vec::new();
         for i in 0..REGION_SIZE {
             for j in 0..REGION_SIZE {
-                // TODO look in sub regions for ones marked as changed and query them for changed cells
                 v.push((self.cells[(i + (j * REGION_SIZE)) as usize], i, j));
             }
         }
@@ -70,6 +68,15 @@ impl GameState {
         }
         b.cells[(ix + (iy * REGION_SIZE)) as usize] = cell;
     }
+
+    pub fn is_empty(&self, x: i32, y: i32) -> bool {
+        let bx = x / REGION_SIZE;
+        let by = y / REGION_SIZE;
+        let ix = x % REGION_SIZE;
+        let iy = y % REGION_SIZE;
+        let b = self.blocks.get(&(bx, by)).unwrap();
+        b.cells[(ix + (iy * REGION_SIZE)) as usize] == Cell::Air
+    }
 }
 
 pub fn update(read_state: &GameState, write_state: &mut GameState) {
@@ -96,29 +103,26 @@ pub fn update(read_state: &GameState, write_state: &mut GameState) {
         if block.dirty {
             println!("Updating: ({}, {})", pos.0, pos.1);
             for (c, i, j) in block.cells() {
-                // TODO start from the bottom
                 let world_pos = (i + block_offset.0, j + block_offset.1);
                 match c {
-                    Cell::Sand{delta} => {
-                        let updated_world_pos = (world_pos.0 + delta.0, world_pos.1 + delta.1);
-                        let mut d = delta;
-                        if updated_world_pos == (0, 0) {
-                            d = (1, 0)
+                    Cell::Sand => {
+                        let down = world_pos.1 + 1;
+                        let left = world_pos.0 - 1 ;
+                        let right = world_pos.0 + 1 ;
+                        // TODO use actual world size
+                        if  down <= 15 && read_state.is_empty(world_pos.0, down) {
+                            write_state.write_cell(Cell::Sand, world_pos.0, down, true);
                         }
-                        if updated_world_pos == ((REGION_SIZE * 2) - 1, 0) {
-                            d = (0, 1)
+                        //else if down <= 15 && left >= 0 && read_state.is_empty(left, down) {
+                        //    write_state.write_cell(Cell::Sand, left, down, true);
+                        //}
+                        //else if down <= 15 && right <= 15 && read_state.is_empty(right, down) {
+                        //    write_state.write_cell(Cell::Sand, right, down, true);
+                        //}
+                        else {
+                            write_state.write_cell(Cell::Sand, world_pos.0, world_pos.1, false);
                         }
-                        if updated_world_pos == ((REGION_SIZE * 2) - 1, (REGION_SIZE * 2) - 1) {
-                            d = (-1, 0)
-                        }
-                        if updated_world_pos == (0, (REGION_SIZE * 2) - 1) {
-                            d = (0, -1)
-                        }
-                        write_state.write_cell(Cell::Sand{delta: d}, updated_world_pos.0, updated_world_pos.1, true);
                     },
-                    Cell::OtherSand => {
-                        write_state.write_cell(Cell::OtherSand, world_pos.0, world_pos.1, false);
-                    }
                     _ => {}
                 }
             }

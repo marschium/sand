@@ -53,12 +53,17 @@ pub fn start() {
     let mut write_state = game::GameState::new();
     
     // TEST SETUP
-    read_state.write_cell(game::Cell::Sand{delta: (1, 0)}, 0, 0, true);
-    read_state.write_cell(game::Cell::Sand{delta: (-1, 0)}, 15, 15, true);
-    read_state.write_cell(game::Cell::OtherSand, 3, 3, false);
-    read_state.write_cell(game::Cell::OtherSand, 12, 3, false);
-    read_state.write_cell(game::Cell::OtherSand, 3, 12, false);
-    read_state.write_cell(game::Cell::OtherSand, 12, 12, false);
+    read_state.write_cell(game::Cell::Sand, 0, 0, true);
+    read_state.write_cell(game::Cell::Sand, 1, 0, true);
+    read_state.write_cell(game::Cell::Sand, 2, 0, true);
+    read_state.write_cell(game::Cell::Sand, 0, 1, true);
+    read_state.write_cell(game::Cell::Sand, 1, 1, true);
+    read_state.write_cell(game::Cell::Sand, 2, 1, true);
+    read_state.write_cell(game::Cell::Sand, 3, 1, true);
+    read_state.write_cell(game::Cell::Sand, 1, 15, true);
+    read_state.write_cell(game::Cell::Sand, 2, 15, true);
+    read_state.write_cell(game::Cell::Sand, 3, 15, true);
+    read_state.write_cell(game::Cell::Sand, 15, 15, true);
     // TEST
 
     let mut frame_start = Instant::now();
@@ -78,7 +83,7 @@ pub fn start() {
             }
         }
 
-        if ms_since_update >= 1000 {
+        if ms_since_update >= 250 {
             ms_since_update = 0;
             game::update(&read_state, &mut write_state);
             println!("---------UPDATE END--------------");
@@ -95,7 +100,7 @@ pub fn start() {
             let block_offset = (pos.0 * game::REGION_SIZE, pos.1 * game::REGION_SIZE);
             for (c, i, j) in b.cells() {
                 match c {
-                    game::Cell::Sand{..} | game::Cell::OtherSand => {
+                    game::Cell::Sand{..} => {
                         canvas.copy(
                             &tex,
                             None,
