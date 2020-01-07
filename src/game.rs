@@ -1,14 +1,12 @@
 use std::collections::HashMap;
 
-#[derive(Copy, Clone, PartialEq)]
-pub enum Cell {
-    Air,
-    Sand,
-}
+use crate::cells::{Cell, Spawner, update_cell};
 
 pub struct CellBlock {
     cells: Vec<Cell>,
-    dirty: bool
+    dirty: bool,
+    iter_x: i32,
+    iter_y: i32,
 }
 
 impl CellBlock {
@@ -17,38 +15,51 @@ impl CellBlock {
         let cells = vec![Cell::Air; (REGION_SIZE * REGION_SIZE) as usize];
         CellBlock {
             cells,
-            dirty: true
+            dirty: true,
+            iter_x: 0,
+            iter_y: 0
         }
     }
 
-    pub fn cells(&self) -> Vec<(Cell, i32, i32)> {
-        let mut v = Vec::new();
-        for i in 0..REGION_SIZE {
-            for j in 0..REGION_SIZE {
-                v.push((self.cells[(i + (j * REGION_SIZE)) as usize], i, j));
-            }
+    pub fn cells(&self) -> Vec<(&Cell, i32, i32)> {
+
+        fn idx_to_coord(i: usize) -> (i32, i32) {
+            let x = i as i32 % REGION_SIZE;
+            let y = i as i32 / REGION_SIZE;
+            (x, y)
         }
-        v
+
+        // TODO don't create a new vector just iterate over existing
+        return self.cells
+            .iter()
+            .enumerate()
+            .map(|(i, x)| {
+                let c = idx_to_coord(i);
+                (x, c.0, c.1)
+            })
+            .collect();
     }
 }
 
 pub struct GameState {
+    pub size: i32,
     pub blocks : HashMap<(i32, i32), CellBlock>
 }
 
-pub const REGION_SIZE: i32 = 8;
+pub const REGION_SIZE: i32 = 16;
 
 impl GameState {
 
-    pub fn new() -> Self {
+    pub fn new(size: i32) -> Self {
         let mut blocks = HashMap::new();
-        blocks.insert((0, 0), CellBlock::new());
-        blocks.insert((1, 0), CellBlock::new());
-        blocks.insert((0, 1), CellBlock::new());
-        blocks.insert((1, 1), CellBlock::new());
+        for x in 0..size {
+            for y in 0..size {
+                blocks.insert((x as i32, y as i32), CellBlock::new());
+            }
+        }
         GameState {
+            size: size * REGION_SIZE,
             blocks,
-
         }
     }
 
@@ -93,6 +104,11 @@ pub fn update(read_state: &GameState, write_state: &mut GameState) {
         }
     }
 
+    // run spawners
+    // TODO generate once
+    let s = Spawner{};
+    s.spawn(write_state);
+
     // reset every block in target
     for (_, block) in write_state.blocks.iter_mut() {
         block.dirty = false;
@@ -104,27 +120,7 @@ pub fn update(read_state: &GameState, write_state: &mut GameState) {
             println!("Updating: ({}, {})", pos.0, pos.1);
             for (c, i, j) in block.cells() {
                 let world_pos = (i + block_offset.0, j + block_offset.1);
-                match c {
-                    Cell::Sand => {
-                        let down = world_pos.1 + 1;
-                        let left = world_pos.0 - 1 ;
-                        let right = world_pos.0 + 1 ;
-                        // TODO use actual world size
-                        if  down <= 15 && read_state.is_empty(world_pos.0, down) {
-                            write_state.write_cell(Cell::Sand, world_pos.0, down, true);
-                        }
-                        //else if down <= 15 && left >= 0 && read_state.is_empty(left, down) {
-                        //    write_state.write_cell(Cell::Sand, left, down, true);
-                        //}
-                        //else if down <= 15 && right <= 15 && read_state.is_empty(right, down) {
-                        //    write_state.write_cell(Cell::Sand, right, down, true);
-                        //}
-                        else {
-                            write_state.write_cell(Cell::Sand, world_pos.0, world_pos.1, false);
-                        }
-                    },
-                    _ => {}
-                }
+                update_cell(c, world_pos.0, world_pos.1, read_state, write_state);
             }
         }            
     }

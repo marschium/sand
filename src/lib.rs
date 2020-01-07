@@ -8,6 +8,9 @@ use sdl2::render::{Canvas, Texture, TextureCreator};
 use std::time::{Instant, Duration};
 
 mod game;
+mod cells;
+
+use cells::Cell;
 
 const TEX_SIZE: u32 = 16;
 
@@ -30,8 +33,8 @@ pub fn dummy_texture<'a>(canvas: &mut Canvas<Window>, texture_creator: &'a Textu
     Ok(tex)
 }
 
-const GRID_SIZE: i32 = 8;
-const CELL_DRAW_SIZE: i32 = 32;
+const CELL_DRAW_SIZE: i32 = 4;
+const MAP_SIZE: i32 = 8;
 
 pub fn start() {
     let sdl_context = sdl2::init().unwrap();
@@ -49,21 +52,21 @@ pub fn start() {
     let texture_creator = canvas.texture_creator();
     let tex = dummy_texture(&mut canvas, &texture_creator).unwrap();
 
-    let mut read_state = game::GameState::new();
-    let mut write_state = game::GameState::new();
+    let mut read_state = game::GameState::new(MAP_SIZE);
+    let mut write_state = game::GameState::new(MAP_SIZE);
     
     // TEST SETUP
-    read_state.write_cell(game::Cell::Sand, 0, 0, true);
-    read_state.write_cell(game::Cell::Sand, 1, 0, true);
-    read_state.write_cell(game::Cell::Sand, 2, 0, true);
-    read_state.write_cell(game::Cell::Sand, 0, 1, true);
-    read_state.write_cell(game::Cell::Sand, 1, 1, true);
-    read_state.write_cell(game::Cell::Sand, 2, 1, true);
-    read_state.write_cell(game::Cell::Sand, 3, 1, true);
-    read_state.write_cell(game::Cell::Sand, 1, 15, true);
-    read_state.write_cell(game::Cell::Sand, 2, 15, true);
-    read_state.write_cell(game::Cell::Sand, 3, 15, true);
-    read_state.write_cell(game::Cell::Sand, 15, 15, true);
+    read_state.write_cell(Cell::Sand, 0, 0, true);
+    read_state.write_cell(Cell::Sand, 1, 0, true);
+    read_state.write_cell(Cell::Sand, 2, 0, true);
+    read_state.write_cell(Cell::Sand, 0, 7, true);
+    read_state.write_cell(Cell::Sand, 1, 7, true);
+    read_state.write_cell(Cell::Sand, 2, 7, true);
+    read_state.write_cell(Cell::Sand, 3, 7, true);
+    read_state.write_cell(Cell::Sand, 1, 15, true);
+    read_state.write_cell(Cell::Sand, 2, 15, true);
+    read_state.write_cell(Cell::Sand, 3, 15, true);
+    //read_state.write_cell(Cell::Sand, 15, 15, true);
     // TEST
 
     let mut frame_start = Instant::now();
@@ -83,10 +86,12 @@ pub fn start() {
             }
         }
 
-        if ms_since_update >= 250 {
+        if ms_since_update >= 32 {
             ms_since_update = 0;
+            let update_start = Instant::now();
             game::update(&read_state, &mut write_state);
-            println!("---------UPDATE END--------------");
+            //println!("{}", update_start.elapsed().as_micros());
+            //println!("---------UPDATE END--------------");
             let tmp = read_state;
             read_state = write_state;
             write_state = tmp;
@@ -100,7 +105,7 @@ pub fn start() {
             let block_offset = (pos.0 * game::REGION_SIZE, pos.1 * game::REGION_SIZE);
             for (c, i, j) in b.cells() {
                 match c {
-                    game::Cell::Sand{..} => {
+                    Cell::Sand{..} => {
                         canvas.copy(
                             &tex,
                             None,
