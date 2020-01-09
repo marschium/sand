@@ -10,7 +10,7 @@ use std::time::{Instant, Duration};
 mod game;
 mod cells;
 
-use cells::Cell;
+use cells::{Cell, Spawner};
 
 const TEX_SIZE: u32 = 16;
 
@@ -33,8 +33,8 @@ pub fn dummy_texture<'a>(canvas: &mut Canvas<Window>, texture_creator: &'a Textu
     Ok(tex)
 }
 
-const CELL_DRAW_SIZE: i32 = 4;
-const MAP_SIZE: i32 = 8;
+const CELL_DRAW_SIZE: i32 = 2;
+const MAP_SIZE: i32 = 16;
 
 pub fn start() {
     let sdl_context = sdl2::init().unwrap();
@@ -56,21 +56,32 @@ pub fn start() {
     let mut write_state = game::GameState::new(MAP_SIZE);
     
     // TEST SETUP
-    read_state.write_cell(Cell::Sand, 0, 0, true);
-    read_state.write_cell(Cell::Sand, 1, 0, true);
-    read_state.write_cell(Cell::Sand, 2, 0, true);
-    read_state.write_cell(Cell::Sand, 0, 7, true);
-    read_state.write_cell(Cell::Sand, 1, 7, true);
-    read_state.write_cell(Cell::Sand, 2, 7, true);
-    read_state.write_cell(Cell::Sand, 3, 7, true);
-    read_state.write_cell(Cell::Sand, 1, 15, true);
-    read_state.write_cell(Cell::Sand, 2, 15, true);
-    read_state.write_cell(Cell::Sand, 3, 15, true);
-    //read_state.write_cell(Cell::Sand, 15, 15, true);
+    //read_state.write_cell(Cell::Sand, 5, 15, false);
+    //read_state.write_cell(Cell::Sand, 5, 16, true);
+    // read_state.write_cell(Cell::Sand, 2, 0, true);
+    // read_state.write_cell(Cell::Sand, 0, 7, true);
+    // read_state.write_cell(Cell::Sand, 1, 7, true);
+    // read_state.write_cell(Cell::Sand, 2, 7, true);
+    // read_state.write_cell(Cell::Sand, 3, 7, true);
+    // read_state.write_cell(Cell::Sand, 1, 15, true);
+    // read_state.write_cell(Cell::Sand, 2, 15, true);
+    // read_state.write_cell(Cell::Sand, 3, 15, true);
     // TEST
 
     let mut frame_start = Instant::now();
     let mut ms_since_update = 0u128;
+
+    let mut frames_since_log = 0u32;
+    let mut frame_times = Vec::new();
+
+    // TODO move?
+    let mut spawner = Spawner{tick: false, max: 100, c: 0, x_offset: 10};
+    let mut other_spawner = Spawner{tick: false, max: 100, c: 0, x_offset: 25};
+    let mut other_spawner_b = Spawner{tick: false, max: 50, c: 0, x_offset: 35};
+    let mut other_spawner_c = Spawner{tick: false, max: 50, c: 0, x_offset: 45};
+    let mut other_spawner_d = Spawner{tick: false, max: 50, c: 0, x_offset: 55};
+    let mut other_spawner_e = Spawner{tick: false, max: 50, c: 0, x_offset: 65};
+    let mut spawners = vec![spawner, other_spawner, other_spawner_b, other_spawner_c, other_spawner_d, other_spawner_e];
 
     'running: loop {
         frame_start = Instant::now();
@@ -87,11 +98,11 @@ pub fn start() {
         }
 
         if ms_since_update >= 32 {
+            frames_since_log += 1;
             ms_since_update = 0;
             let update_start = Instant::now();
-            game::update(&read_state, &mut write_state);
-            //println!("{}", update_start.elapsed().as_micros());
-            //println!("---------UPDATE END--------------");
+            game::update(&read_state, &mut write_state, &mut spawners);
+            frame_times.push(update_start.elapsed().as_micros());
             let tmp = read_state;
             read_state = write_state;
             write_state = tmp;
@@ -124,5 +135,13 @@ pub fn start() {
             d = 1;
         }
         ms_since_update += d;
+
+        if frames_since_log >= 60 {
+            let sum : u128 =  frame_times.iter().sum();
+            let avg =  sum as f64 /  frame_times.len() as f64;
+            println!("{}", avg);
+            frames_since_log = 0;
+            frame_times.clear();
+        }
     }
 }

@@ -4,7 +4,7 @@ use crate::cells::{Cell, Spawner, update_cell};
 
 pub struct CellBlock {
     cells: Vec<Cell>,
-    dirty: bool,
+    pub dirty: bool,
     iter_x: i32,
     iter_y: i32,
 }
@@ -63,6 +63,10 @@ impl GameState {
         }
     }
 
+    pub fn get_block_mut(&mut self, bx: i32, by: i32) -> &mut CellBlock {
+        self.blocks.get_mut(&(bx, by)).unwrap()
+    }
+
     pub fn reset_block(&mut self, x: i32, y: i32) {
         // TODO index blocks based on global x/y instead of block x/y?
         self.blocks.insert((x, y), CellBlock::new());
@@ -73,11 +77,11 @@ impl GameState {
         let by = y / REGION_SIZE;
         let ix = x % REGION_SIZE;
         let iy = y % REGION_SIZE;
-        let b = self.blocks.get_mut(&(bx,by)).unwrap();
+        let b = self.get_block_mut(bx,by);
         if dirty {
             b.dirty = dirty;
         }
-        b.cells[(ix + (iy * REGION_SIZE)) as usize] = cell;
+        b.cells[(ix + (iy * REGION_SIZE)) as usize] = cell;   
     }
 
     pub fn is_empty(&self, x: i32, y: i32) -> bool {
@@ -90,7 +94,7 @@ impl GameState {
     }
 }
 
-pub fn update(read_state: &GameState, write_state: &mut GameState) {
+pub fn update(read_state: &GameState, write_state: &mut GameState, spawners: &mut Vec<Spawner>) {
 
     // clear any blocks that will be changed
     // copy any blocks that won't
@@ -104,20 +108,18 @@ pub fn update(read_state: &GameState, write_state: &mut GameState) {
         }
     }
 
-    // run spawners
-    // TODO generate once
-    let s = Spawner{};
-    s.spawn(write_state);
-
     // reset every block in target
     for (_, block) in write_state.blocks.iter_mut() {
         block.dirty = false;
     }
 
+    for spawner in spawners.iter_mut() {
+        spawner.spawn(write_state);
+    }
+
     for (pos, block) in read_state.blocks.iter() {
         let block_offset = (pos.0 * REGION_SIZE, pos.1 * REGION_SIZE);
         if block.dirty {
-            println!("Updating: ({}, {})", pos.0, pos.1);
             for (c, i, j) in block.cells() {
                 let world_pos = (i + block_offset.0, j + block_offset.1);
                 update_cell(c, world_pos.0, world_pos.1, read_state, write_state);
