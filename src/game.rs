@@ -94,7 +94,7 @@ impl GameState {
     }
 }
 
-pub fn update(read_state: &GameState, write_state: &mut GameState, spawners: &mut Vec<Spawner>) {
+pub fn update(read_state: &GameState, write_state: &mut GameState, spawners: &mut Vec<impl Spawner>) {
 
     // clear any blocks that will be changed
     // copy any blocks that won't

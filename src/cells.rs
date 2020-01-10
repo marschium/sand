@@ -8,30 +8,42 @@ pub enum Cell {
     Sand,
 }
 
-pub struct Spawner{
-    pub x_offset: i32,
-    pub tick: bool,
-    pub max: u32,
-    pub c: u32,
+pub struct RadialSpawner{
+    x: i32,
+    y: i32,
+    deltas: Vec<(i32, i32)>
 }
 
-impl Spawner {
-
-    pub fn spawn(&mut self, write_state: &mut GameState) {
-        if self.c > self.max {
-            return;
+impl RadialSpawner {
+    pub fn new(x : i32, y: i32) -> RadialSpawner {
+        let deltas = vec! [
+            (2,0), (4,0), (6,0),
+        (0,2), (2,2), (4,2), (6,2), (8,2),
+        (0,4), (2,4), (4,4), (6,4), (8,4),
+        (0,6), (2,6), (4,6), (6,6), (8,6),
+            (2,8), (4,8), (6,8),
+        ];
+        RadialSpawner {
+            x,
+            y,
+            deltas: deltas
         }
+    }
+}
 
-        if self.tick {
-            self.tick = false;
-            return;
-        }
+pub trait Spawner {
 
-        for (x, y) in vec![(0,0),(2,0),(4,0),(6,0),(8,0)] {
-            write_state.write_cell(Cell::Sand, self.x_offset + x, y, true);
+    fn spawn(&mut self, write_state: &mut GameState);
+
+}
+
+impl Spawner for RadialSpawner {
+
+    fn spawn(&mut self, write_state: &mut GameState) {
+
+        for (dx, dy) in self.deltas.iter() {
+            write_state.write_cell(Cell::Sand, self.x + dx, self.y + dy, true);
         }
-        self.tick = true;
-        self.c += 1;
     }
 
 }
@@ -39,19 +51,20 @@ impl Spawner {
 pub fn update_cell(cell: &Cell, x: i32, y: i32, read_state: &GameState, write_state: &mut GameState) {
     match cell {
         Cell::Sand => {
-            let down = y + 1;
-            let mut sideways = x - 1;
+            let new_y = y + 1;
+            let mut sideways = - 1;
             if rand::random() {
-                sideways =  x + 1;
+                sideways =  1;
             }
+            let new_x = x + sideways;
             let height = (read_state.size as i32) - 1;
-            if  down <= height && read_state.is_empty(x, down) && write_state.is_empty(x, down) {
-                write_state.write_cell(Cell::Sand, x, down, true);
-                write_state.get_block_mut(x / REGION_SIZE, (y - 1) / REGION_SIZE).dirty = true;
+            if  new_y <= height && read_state.is_empty(x, new_y) && write_state.is_empty(x, new_y) {
+                write_state.write_cell(Cell::Sand, x, new_y, true);
+                write_state.get_block_mut((x - sideways) / REGION_SIZE, (y - 1) / REGION_SIZE).dirty = true;
             }
-            else if down <= height && sideways >= 0 && sideways <= height && read_state.is_empty(sideways, down)  && write_state.is_empty(sideways, down) {
-                 write_state.write_cell(Cell::Sand, sideways, down, true);                 
-                 write_state.get_block_mut(x / REGION_SIZE, (y - 1) / REGION_SIZE).dirty = true;
+            else if new_y <= height && new_x >= 0 && new_x <= height && read_state.is_empty(new_x, new_y)  && write_state.is_empty(new_x, new_y) {
+                 write_state.write_cell(Cell::Sand, new_x, new_y, true);                 
+                 write_state.get_block_mut((x - sideways) / REGION_SIZE, (y - 1) / REGION_SIZE).dirty = true;
             }
             else {
                 write_state.write_cell(Cell::Sand, x, y, false);

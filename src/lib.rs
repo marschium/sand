@@ -10,7 +10,7 @@ use std::time::{Instant, Duration};
 mod game;
 mod cells;
 
-use cells::{Cell, Spawner};
+use cells::{Cell, Spawner, RadialSpawner};
 
 const TEX_SIZE: u32 = 16;
 
@@ -23,7 +23,7 @@ pub fn dummy_texture<'a>(canvas: &mut Canvas<Window>, texture_creator: &'a Textu
                     c.set_draw_color(Color::RGB(255, 0, 0));
                 }
                 else{
-                    c.set_draw_color(Color::RGB(0, 0, 0));
+                    c.set_draw_color(Color::RGB(255, 255, 102));
                 }
                 c.draw_point(Point::new(i as i32, j as i32))
                                     .expect("could not draw point");
@@ -40,7 +40,7 @@ pub fn start() {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
 
-    let window = video_subsystem.window("sand", 800, 600)
+    let window = video_subsystem.window("sand", 512, 512)
         .position_centered()
         .build()
         .unwrap();
@@ -54,19 +54,6 @@ pub fn start() {
 
     let mut read_state = game::GameState::new(MAP_SIZE);
     let mut write_state = game::GameState::new(MAP_SIZE);
-    
-    // TEST SETUP
-    //read_state.write_cell(Cell::Sand, 5, 15, false);
-    //read_state.write_cell(Cell::Sand, 5, 16, true);
-    // read_state.write_cell(Cell::Sand, 2, 0, true);
-    // read_state.write_cell(Cell::Sand, 0, 7, true);
-    // read_state.write_cell(Cell::Sand, 1, 7, true);
-    // read_state.write_cell(Cell::Sand, 2, 7, true);
-    // read_state.write_cell(Cell::Sand, 3, 7, true);
-    // read_state.write_cell(Cell::Sand, 1, 15, true);
-    // read_state.write_cell(Cell::Sand, 2, 15, true);
-    // read_state.write_cell(Cell::Sand, 3, 15, true);
-    // TEST
 
     let mut frame_start = Instant::now();
     let mut ms_since_update = 0u128;
@@ -75,13 +62,8 @@ pub fn start() {
     let mut frame_times = Vec::new();
 
     // TODO move?
-    let mut spawner = Spawner{tick: false, max: 100, c: 0, x_offset: 10};
-    let mut other_spawner = Spawner{tick: false, max: 100, c: 0, x_offset: 25};
-    let mut other_spawner_b = Spawner{tick: false, max: 50, c: 0, x_offset: 35};
-    let mut other_spawner_c = Spawner{tick: false, max: 50, c: 0, x_offset: 45};
-    let mut other_spawner_d = Spawner{tick: false, max: 50, c: 0, x_offset: 55};
-    let mut other_spawner_e = Spawner{tick: false, max: 50, c: 0, x_offset: 65};
-    let mut spawners = vec![spawner, other_spawner, other_spawner_b, other_spawner_c, other_spawner_d, other_spawner_e];
+    let mut spawner = RadialSpawner::new(5, 5);
+    let mut spawners = vec![spawner];
 
     'running: loop {
         frame_start = Instant::now();
@@ -89,6 +71,9 @@ pub fn start() {
 
         for event in event_pump.poll_iter() { 
             match event {
+                Event::MouseButtonDown{x, y, ..} => {
+                    println!("{:?}", (x, y));
+                },
                 Event::Quit {..} |
                 Event::KeyDown { keycode: Some(Keycode::Escape), ..} => {
                     break 'running
@@ -106,11 +91,13 @@ pub fn start() {
             let tmp = read_state;
             read_state = write_state;
             write_state = tmp;
+
+            spawners.clear();
         }
 
 
         canvas.clear();
-        canvas.set_draw_color(Color::RGB(255, 255, 255));
+        canvas.set_draw_color(Color::RGB(0, 0, 0));
 
         for (pos, b) in read_state.blocks.iter() {  // todo include offset in block
             let block_offset = (pos.0 * game::REGION_SIZE, pos.1 * game::REGION_SIZE);
