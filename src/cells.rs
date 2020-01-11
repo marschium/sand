@@ -9,6 +9,7 @@ pub enum Cell {
 }
 
 pub struct RadialSpawner{
+    enabled: bool,
     x: i32,
     y: i32,
     deltas: Vec<(i32, i32)>
@@ -26,8 +27,22 @@ impl RadialSpawner {
         RadialSpawner {
             x,
             y,
-            deltas: deltas
+            deltas: deltas,
+            enabled: false
         }
+    }
+
+    pub fn set_pos(&mut self, x: i32, y: i32) {
+        self.x = x;
+        self.y = y;
+    }
+
+    pub fn enable(&mut self) {
+        self.enabled = true;
+    }
+
+    pub fn disable(&mut self) {
+        self.enabled = false;
     }
 }
 
@@ -40,6 +55,10 @@ pub trait Spawner {
 impl Spawner for RadialSpawner {
 
     fn spawn(&mut self, write_state: &mut GameState) {
+
+        if !self.enabled {
+            return;
+        }
 
         for (dx, dy) in self.deltas.iter() {
             write_state.write_cell(Cell::Sand, self.x + dx, self.y + dy, true);

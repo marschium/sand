@@ -62,8 +62,9 @@ pub fn start() {
     let mut frame_times = Vec::new();
 
     // TODO move?
+    let mut mouse_down = false;
+    let mut mouse_pos = (0i32, 0i32);
     let mut spawner = RadialSpawner::new(5, 5);
-    let mut spawners = vec![spawner];
 
     'running: loop {
         frame_start = Instant::now();
@@ -71,8 +72,14 @@ pub fn start() {
 
         for event in event_pump.poll_iter() { 
             match event {
-                Event::MouseButtonDown{x, y, ..} => {
-                    println!("{:?}", (x, y));
+                Event::MouseMotion{x, y, ..} => {
+                    spawner.set_pos(x / CELL_DRAW_SIZE, y / CELL_DRAW_SIZE);
+                }
+                Event::MouseButtonDown{..} => {
+                    spawner.enable();
+                },
+                Event::MouseButtonUp{..} => {
+                    spawner.disable();
                 },
                 Event::Quit {..} |
                 Event::KeyDown { keycode: Some(Keycode::Escape), ..} => {
@@ -86,13 +93,11 @@ pub fn start() {
             frames_since_log += 1;
             ms_since_update = 0;
             let update_start = Instant::now();
-            game::update(&read_state, &mut write_state, &mut spawners);
+            game::update(&read_state, &mut write_state, &mut spawner);
             frame_times.push(update_start.elapsed().as_micros());
             let tmp = read_state;
             read_state = write_state;
             write_state = tmp;
-
-            spawners.clear();
         }
 
 

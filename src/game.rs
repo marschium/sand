@@ -94,7 +94,7 @@ impl GameState {
     }
 }
 
-pub fn update(read_state: &GameState, write_state: &mut GameState, spawners: &mut Vec<impl Spawner>) {
+pub fn update(read_state: &GameState, write_state: &mut GameState, spawner: &mut impl Spawner) {
 
     // clear any blocks that will be changed
     // copy any blocks that won't
@@ -112,10 +112,8 @@ pub fn update(read_state: &GameState, write_state: &mut GameState, spawners: &mu
     for (_, block) in write_state.blocks.iter_mut() {
         block.dirty = false;
     }
-
-    for spawner in spawners.iter_mut() {
-        spawner.spawn(write_state);
-    }
+    
+    spawner.spawn(write_state); // TODO FIX TRYING TO SET OUTSIDE WORLD
 
     for (pos, block) in read_state.blocks.iter() {
         let block_offset = (pos.0 * REGION_SIZE, pos.1 * REGION_SIZE);
