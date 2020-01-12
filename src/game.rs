@@ -92,6 +92,15 @@ impl GameState {
         let b = self.blocks.get(&(bx, by)).unwrap();
         b.cells[(ix + (iy * REGION_SIZE)) as usize] == Cell::Air
     }
+
+    pub fn read_cell(&self, x: i32, y: i32) -> &Cell {
+        let bx = x / REGION_SIZE;
+        let by = y / REGION_SIZE;
+        let ix = x % REGION_SIZE;
+        let iy = y % REGION_SIZE;
+        let b = self.blocks.get(&(bx, by)).unwrap();
+        &b.cells[(ix + (iy * REGION_SIZE)) as usize]
+    }
 }
 
 pub fn update(read_state: &GameState, write_state: &mut GameState, spawner: &mut impl Spawner) {

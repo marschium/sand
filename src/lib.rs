@@ -1,37 +1,16 @@
 extern crate sdl2;
-use sdl2::rect::{Point, Rect};
+use std::collections::HashMap;
+use sdl2::rect::Rect;
 use sdl2::pixels::Color;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
-use sdl2::video::{Window, WindowContext};
-use sdl2::render::{Canvas, Texture, TextureCreator};
-use std::time::{Instant, Duration};
+use std::time::Instant;
 
 mod game;
 mod cells;
+mod render;
 
-use cells::{Cell, Spawner, RadialSpawner};
-
-const TEX_SIZE: u32 = 16;
-
-pub fn dummy_texture<'a>(canvas: &mut Canvas<Window>, texture_creator: &'a TextureCreator<WindowContext>) -> Result<Texture<'a>,String> {
-    let mut tex = texture_creator.create_texture_target(None, TEX_SIZE, TEX_SIZE).map_err(|x| x.to_string())?;
-    canvas.with_texture_canvas(&mut tex, |c| {
-        for i in 0..TEX_SIZE {
-            for j in 0..TEX_SIZE {
-                if i == 0 || j == 0 || i == TEX_SIZE - 1 || j == TEX_SIZE - 1 {
-                    c.set_draw_color(Color::RGB(255, 0, 0));
-                }
-                else{
-                    c.set_draw_color(Color::RGB(255, 255, 102));
-                }
-                c.draw_point(Point::new(i as i32, j as i32))
-                                    .expect("could not draw point");
-            }
-        }
-    }).map_err(|x| x.to_string())?;
-    Ok(tex)
-}
+use cells::{Cell, RadialSpawner};
 
 const CELL_DRAW_SIZE: i32 = 2;
 const MAP_SIZE: i32 = 16;
@@ -48,9 +27,11 @@ pub fn start() {
     let mut canvas = window.into_canvas().build().unwrap();
     let mut event_pump = sdl_context.event_pump().unwrap();
 
-    // TODO create a texture that acts as each sqaure
     let texture_creator = canvas.texture_creator();
-    let tex = dummy_texture(&mut canvas, &texture_creator).unwrap();
+    // TODO lookup?
+    let sand_tex = render::create_cell_texture(&Color::RGB(255, 255, 102), &mut canvas, &texture_creator).unwrap();
+    let wood_tex = render::create_cell_texture(&Color::RGB(111, 48, 15), &mut canvas, &texture_creator).unwrap();   
+    let fire_tex = render::create_cell_texture(&Color::RGB(255, 16, 16), &mut canvas, &texture_creator).unwrap();               
 
     let mut read_state = game::GameState::new(MAP_SIZE);
     let mut write_state = game::GameState::new(MAP_SIZE);
@@ -85,6 +66,12 @@ pub fn start() {
                 Event::KeyDown { keycode: Some(Keycode::Escape), ..} => {
                     break 'running
                 },
+                Event::KeyDown {keycode: Some(Keycode::Q), ..} => {
+                    spawner.set_cell(Cell::Wood);
+                }
+                Event::KeyDown {keycode: Some(Keycode::W), ..} => {
+                    spawner.set_cell(Cell::Fire{fuel: 30});
+                }
                 _ => {}
             }
         }
@@ -107,15 +94,44 @@ pub fn start() {
         for (pos, b) in read_state.blocks.iter() {  // todo include offset in block
             let block_offset = (pos.0 * game::REGION_SIZE, pos.1 * game::REGION_SIZE);
             for (c, i, j) in b.cells() {
+                //let tex = texture_lookup.entry(c.clone()).or_insert_with(|| { render::create_cell_texture(&Color::RGB(255, 255, 102), &mut canvas, &texture_creator).unwrap()});
                 match c {
-                    Cell::Sand{..} => {
+                    Cell::Air => {},
+                    // TODO lookup for something
+                    Cell::Sand => {
                         canvas.copy(
-                            &tex,
+                            &sand_tex,
                             None,
-                            Rect::new(((block_offset.0 + i) * CELL_DRAW_SIZE), ((block_offset.1 + j) * CELL_DRAW_SIZE), CELL_DRAW_SIZE as u32, CELL_DRAW_SIZE as u32)).unwrap();
+                            Rect::new(
+                                (block_offset.0 + i) * CELL_DRAW_SIZE,
+                                (block_offset.1 + j) * CELL_DRAW_SIZE,
+                                CELL_DRAW_SIZE as u32, CELL_DRAW_SIZE as u32))
+                            .unwrap();
                     },
-                    _ => {}
-                }
+                    Cell::Wood => {
+                        canvas.copy(
+                            &wood_tex,
+                            None,
+                            Rect::new(
+                                (block_offset.0 + i) * CELL_DRAW_SIZE,
+                                (block_offset.1 + j) * CELL_DRAW_SIZE,
+                                CELL_DRAW_SIZE as u32, CELL_DRAW_SIZE as u32))
+                            .unwrap();
+                    },
+                    Cell::Fire{..} => {
+                        canvas.copy(
+                            &fire_tex,
+                            None,
+                            Rect::new(
+                                (block_offset.0 + i) * CELL_DRAW_SIZE,
+                                (block_offset.1 + j) * CELL_DRAW_SIZE,
+                                CELL_DRAW_SIZE as u32, CELL_DRAW_SIZE as u32))
+                            .unwrap();
+                    }
+                    _ => {
+                        
+                    }
+                }                
             }
         }
         
