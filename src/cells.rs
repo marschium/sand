@@ -6,8 +6,8 @@ use crate::game::{GameState, REGION_SIZE};
 pub enum Cell {
     Air,
     Sand,
-    Wood,
-    Fire{fuel: i32}
+    Wood{fuel: i32},
+    Fire{heat: i32}
 }
 
 pub struct RadialSpawner{
@@ -75,34 +75,69 @@ impl Spawner for RadialSpawner {
 
 }
 
+pub fn random_dir(x: i32, y: i32) -> (i32, i32) {
+    let mut dx = x;
+    let mut dy = y;
+    if rand::random() {
+        dx = x - 1;
+    }
+    if rand::random() {
+        dx = dx + 1;
+    }
+    if rand::random() {
+        dy = dy - 1;
+    }
+    if rand::random() {
+        dy = dy + 1;
+    }
+    (dx, dy)
+}
+
 pub fn update_cell(cell: &Cell, x: i32, y: i32, read_state: &GameState, write_state: &mut GameState) {
     match cell {
         Cell::Air => {}
         Cell::Sand => {
             let _ = gravity(Cell::Sand, x, y, read_state, write_state);
         },
-        Cell::Wood => {
-            match read_state.read_cell(x, y - 1) {
-                Cell::Fire{fuel} => {
-                    // TODO track wood fuel/health
-                    // TODO increase heat of fire and have that create more?
-                    write_state.write_cell(Cell::Fire{fuel: fuel+1}, x, y, true);
+        Cell::Wood{fuel} => {
+            if fuel <= &0 {                
+                write_state.write_cell(Cell::Air, x, y, false);
+                return;
+            }
+            let (dx, dy) = random_dir(x, y);
+            match read_state.read_cell(dx, dy) {
+                // TODO cell is fire. Destory this cell.
+                // TODO random chance to create in a random direciton (assuming it is empty) 
+
+
+                Cell::Fire{..} => {
+                     write_state.write_cell(Cell::Air, x, y, true);
+                     write_state.write_cell(Cell::Fire{heat: 30}, x, y, true);
                 },
                 _ => {
-                    write_state.write_cell(Cell::Wood, x, y, false);
+                    write_state.write_cell(Cell::Wood{fuel: fuel.clone()}, x, y, false);
                 }
             }
         },
-        Cell::Fire{fuel} => {
-            let gr = gravity(Cell::Fire{fuel: fuel.clone()}, x, y, read_state, write_state);
-            if gr == GravityResult::OnGround {
-                if fuel <= &0 {
-                    write_state.write_cell(Cell::Air, x, y, false);
+        Cell::Fire{heat} => {
+            if heat <= &0 {
+                write_state.write_cell(Cell::Air, x, y, false);
+                return;
+            }
+            let (dx, dy) = random_dir(x, y);
+            match read_state.read_cell(dx, dy) {
+                Cell::Air => {
+                    let mut degrade = 1;
+                    if rand::random() {
+                        degrade = 2;
+                    }
+                    write_state.write_cell(Cell::Fire{heat: heat - degrade}, dx, dy, true);
                 }
-                else {
-                    write_state.write_cell(Cell::Fire{fuel: fuel - 1}, x, y, true);
+                _ => {
+                    write_state.write_cell(Cell::Fire{heat: heat - 1}, x, y, true);
                 }
             }
+            // TODO spread left or right at random
         }
         _ => {}
     }

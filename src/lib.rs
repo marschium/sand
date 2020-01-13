@@ -67,10 +67,10 @@ pub fn start() {
                     break 'running
                 },
                 Event::KeyDown {keycode: Some(Keycode::Q), ..} => {
-                    spawner.set_cell(Cell::Wood);
+                    spawner.set_cell(Cell::Wood{fuel: 5});
                 }
                 Event::KeyDown {keycode: Some(Keycode::W), ..} => {
-                    spawner.set_cell(Cell::Fire{fuel: 30});
+                    spawner.set_cell(Cell::Fire{heat: 30});
                 }
                 _ => {}
             }
@@ -108,7 +108,7 @@ pub fn start() {
                                 CELL_DRAW_SIZE as u32, CELL_DRAW_SIZE as u32))
                             .unwrap();
                     },
-                    Cell::Wood => {
+                    Cell::Wood{..} => {
                         canvas.copy(
                             &wood_tex,
                             None,
