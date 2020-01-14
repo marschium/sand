@@ -82,6 +82,8 @@ impl GameState {
             b.dirty = dirty;
         }
         b.cells[(ix + (iy * REGION_SIZE)) as usize] = cell;   
+        // TODO this could also write to a texture at the same time. So that we don't have to
+        // iterate every cell when it comes to rendering
     }
 
     pub fn is_empty(&self, x: i32, y: i32) -> bool {
