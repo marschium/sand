@@ -7,7 +7,9 @@ pub enum Cell {
     Air,
     Sand,
     Wood{fuel: i32},
-    Fire{heat: i32}
+    Fire{heat: i32},
+    Seed,
+    Vine{growth: i32, grown: bool},
 }
 
 pub struct RadialSpawner{
@@ -75,22 +77,19 @@ impl Spawner for RadialSpawner {
 
 }
 
+pub fn random_axis(a: i32) -> i32 {
+    let mut da = a;
+    if rand::random() {
+        da = da - 1;
+    }
+    if rand::random() {
+        da = da + 1;
+    }
+    da
+}
+
 pub fn random_dir(x: i32, y: i32) -> (i32, i32) {
-    let mut dx = x;
-    let mut dy = y;
-    if rand::random() {
-        dx = x - 1;
-    }
-    if rand::random() {
-        dx = dx + 1;
-    }
-    if rand::random() {
-        dy = dy - 1;
-    }
-    if rand::random() {
-        dy = dy + 1;
-    }
-    (dx, dy)
+    (random_axis(x), random_axis(y))
 }
 
 pub fn update_cell(cell: &Cell, x: i32, y: i32, read_state: &GameState, write_state: &mut GameState) {
@@ -106,10 +105,6 @@ pub fn update_cell(cell: &Cell, x: i32, y: i32, read_state: &GameState, write_st
             }
             let (dx, dy) = random_dir(x, y);
             match read_state.read_cell(dx, dy) {
-                // TODO cell is fire. Destory this cell.
-                // TODO random chance to create in a random direciton (assuming it is empty) 
-
-
                 Cell::Fire{..} => {
                      write_state.write_cell(Cell::Air, x, y, true);
                      write_state.write_cell(Cell::Fire{heat: 30}, x, y, true);
@@ -137,9 +132,40 @@ pub fn update_cell(cell: &Cell, x: i32, y: i32, read_state: &GameState, write_st
                     write_state.write_cell(Cell::Fire{heat: heat - 1}, x, y, true);
                 }
             }
-            // TODO spread left or right at random
+        },
+        Cell::Seed => {
+            match gravity(Cell::Seed, x, y, read_state, write_state) {
+                GravityResult::OnGround => {
+                    match read_state.read_cell(x, y + 1) {
+                        Cell::Sand => {
+                            write_state.write_cell(Cell::Vine{growth: 50, grown: false}, x, y, true);
+                        },
+                        _ => {}
+                    }
+                },
+                GravityResult::Falling => {}
+            }
+        },
+        Cell::Vine{growth, grown} => {
+            write_state.write_cell(Cell::Vine{growth: *growth, grown: *grown}, x, y, !*grown);
+
+            if *growth <= 0 || *grown {
+                return;
+            }
+            
+
+            let (dx, mut dy) = random_dir(x, y);
+            if dy > y {
+                dy = y;
+            }  
+            match read_state.read_cell(dx, dy) {
+                Cell::Air => {                  
+                    write_state.write_cell(Cell::Vine{growth: growth - 1, grown: false}, dx, dy, true);
+                    write_state.write_cell(Cell::Vine{growth: growth.clone(), grown: true}, x, y, true);
+                },
+                _ => {}
+            }
         }
-        _ => {}
     }
 }
 

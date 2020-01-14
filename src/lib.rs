@@ -31,7 +31,8 @@ pub fn start() {
     // TODO lookup?
     let sand_tex = render::create_cell_texture(&Color::RGB(255, 255, 102), &mut canvas, &texture_creator).unwrap();
     let wood_tex = render::create_cell_texture(&Color::RGB(111, 48, 15), &mut canvas, &texture_creator).unwrap();   
-    let fire_tex = render::create_cell_texture(&Color::RGB(255, 16, 16), &mut canvas, &texture_creator).unwrap();               
+    let fire_tex = render::create_cell_texture(&Color::RGB(255, 16, 16), &mut canvas, &texture_creator).unwrap();      
+    let plant_tex = render::create_cell_texture(&Color::RGB(16, 255, 16), &mut canvas, &texture_creator).unwrap();
 
     let mut read_state = game::GameState::new(MAP_SIZE);
     let mut write_state = game::GameState::new(MAP_SIZE);
@@ -68,15 +69,18 @@ pub fn start() {
                 },
                 Event::KeyDown {keycode: Some(Keycode::Q), ..} => {
                     spawner.set_cell(Cell::Wood{fuel: 5});
-                }
+                },
                 Event::KeyDown {keycode: Some(Keycode::W), ..} => {
                     spawner.set_cell(Cell::Fire{heat: 30});
+                },
+                Event::KeyDown {keycode: Some(Keycode::E), ..} => {
+                    spawner.set_cell(Cell::Seed);
                 }
                 _ => {}
             }
         }
 
-        if ms_since_update >= 32 {
+        if ms_since_update >= 16 { // 60 updates per sec
             frames_since_log += 1;
             ms_since_update = 0;
             let update_start = Instant::now();
@@ -127,9 +131,16 @@ pub fn start() {
                                 (block_offset.1 + j) * CELL_DRAW_SIZE,
                                 CELL_DRAW_SIZE as u32, CELL_DRAW_SIZE as u32))
                             .unwrap();
-                    }
-                    _ => {
-                        
+                    },
+                    Cell::Seed | Cell::Vine{..} => {
+                        canvas.copy(
+                            &plant_tex,
+                            None,
+                            Rect::new(
+                                (block_offset.0 + i) * CELL_DRAW_SIZE,
+                                (block_offset.1 + j) * CELL_DRAW_SIZE,
+                                CELL_DRAW_SIZE as u32, CELL_DRAW_SIZE as u32))
+                            .unwrap();
                     }
                 }                
             }
