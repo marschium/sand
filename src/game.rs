@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+use sdl2::render::Texture;
+use sdl2::rect::Rect;
 
 use crate::cells::{Cell, Spawner, update_cell};
 
@@ -41,16 +43,17 @@ impl CellBlock {
     }
 }
 
-pub struct GameState {
+pub struct GameState<'a> {
     pub size: i32,
-    pub blocks : HashMap<(i32, i32), CellBlock>
+    pub blocks : HashMap<(i32, i32), CellBlock>,
+    texture: Texture<'a>,
 }
 
 pub const REGION_SIZE: i32 = 16;
 
-impl GameState {
+impl<'a> GameState<'a> {
 
-    pub fn new(size: i32) -> Self {
+    pub fn new(size: i32, texture: Texture<'a>) -> Self {
         let mut blocks = HashMap::new();
         for x in 0..size {
             for y in 0..size {
@@ -60,6 +63,7 @@ impl GameState {
         GameState {
             size: size * REGION_SIZE,
             blocks,
+            texture,
         }
     }
 
@@ -69,7 +73,14 @@ impl GameState {
 
     pub fn reset_block(&mut self, x: i32, y: i32) {
         // TODO index blocks based on global x/y instead of block x/y?
+        let r = Rect::new(x * REGION_SIZE,  y * REGION_SIZE, REGION_SIZE as u32, REGION_SIZE as u32);
+        self.texture.update(r, &vec![0u8; 16 * 16 * 24], 16 * 24);
         self.blocks.insert((x, y), CellBlock::new());
+
+        let tx = x * REGION_SIZE;
+        let ty = y * REGION_SIZE;
+        let i = tx + (ty * REGION_SIZE);
+
     }
 
     pub fn write_cell(&mut self, cell: Cell, x: i32, y: i32, dirty: bool) {
@@ -77,11 +88,22 @@ impl GameState {
         let by = y / REGION_SIZE;
         let ix = x % REGION_SIZE;
         let iy = y % REGION_SIZE;
+        match cell {
+            Cell::Air => {},
+            _ => {
+                let r = Rect::new( x, y, 1, 1);
+                self.texture.update(r, &vec![255u8, 16u8, 16u8], 256 * 24); // TODO set position and color
+            }
+        }
         let b = self.get_block_mut(bx,by);
         if dirty {
             b.dirty = dirty;
         }
         b.cells[(ix + (iy * REGION_SIZE)) as usize] = cell;   
+    }
+
+    pub fn get_tex(&mut self) -> &mut Texture<'a> {
+        &mut self.texture
     }
 
     pub fn is_empty(&self, x: i32, y: i32) -> bool {
