@@ -28,11 +28,6 @@ pub fn start() {
     let mut event_pump = sdl_context.event_pump().unwrap();
 
     let texture_creator = canvas.texture_creator();
-    // TODO lookup?
-    let sand_tex = render::create_cell_texture(&Color::RGB(255, 255, 102), &mut canvas, &texture_creator).unwrap();
-    let wood_tex = render::create_cell_texture(&Color::RGB(111, 48, 15), &mut canvas, &texture_creator).unwrap();   
-    let fire_tex = render::create_cell_texture(&Color::RGB(255, 16, 16), &mut canvas, &texture_creator).unwrap();      
-    let plant_tex = render::create_cell_texture(&Color::RGB(16, 255, 16), &mut canvas, &texture_creator).unwrap();
 
     let tex_a = texture_creator.create_texture_target(None, 256, 256).map_err(|x| x.to_string()).unwrap();
     let tex_b = texture_creator.create_texture_target(None, 256, 256).map_err(|x| x.to_string()).unwrap();
@@ -89,78 +84,22 @@ pub fn start() {
             frames_since_log += 1;
             ms_since_update = 0;
             let update_start = Instant::now();
-            // TODO tidy up
-             canvas.with_texture_canvas(write_state.get_tex(), |c| {
+
+            canvas.with_texture_canvas(write_state.get_tex(), |c| {
                 c.copy(read_state.get_tex(), None, None);
              });
+
             game::update(&read_state, &mut write_state, &mut spawner);
             update_times.push(update_start.elapsed().as_micros());
+
             let tmp = read_state;
             read_state = write_state;
             write_state = tmp;
         }
 
-
-        canvas.clear();
-        canvas.set_draw_color(Color::RGB(0, 0, 0));
-
-
         let draw_time = Instant::now();
         canvas.copy(&read_state.get_tex(), None, None).unwrap();
-
-        // for (pos, b) in read_state.blocks.iter() {  // todo include offset in block
-        //     let block_offset = (pos.0 * game::REGION_SIZE, pos.1 * game::REGION_SIZE);
-        //     for (c, i, j) in b.cells() {
-        //         //let tex = texture_lookup.entry(c.clone()).or_insert_with(|| { render::create_cell_texture(&Color::RGB(255, 255, 102), &mut canvas, &texture_creator).unwrap()});
-        //         match c {
-        //             Cell::Air => {},
-        //             // TODO lookup for something
-        //             Cell::Sand => {
-        //                 canvas.copy(
-        //                     &sand_tex,
-        //                     None,
-        //                     Rect::new(
-        //                         (block_offset.0 + i) * CELL_DRAW_SIZE,
-        //                         (block_offset.1 + j) * CELL_DRAW_SIZE,
-        //                         CELL_DRAW_SIZE as u32, CELL_DRAW_SIZE as u32))
-        //                     .unwrap();
-        //             },
-        //             Cell::Wood{..} => {
-        //                 canvas.copy(
-        //                     &wood_tex,
-        //                     None,
-        //                     Rect::new(
-        //                         (block_offset.0 + i) * CELL_DRAW_SIZE,
-        //                         (block_offset.1 + j) * CELL_DRAW_SIZE,
-        //                         CELL_DRAW_SIZE as u32, CELL_DRAW_SIZE as u32))
-        //                     .unwrap();
-        //             },
-        //             Cell::Fire{..} => {
-        //                 canvas.copy(
-        //                     &fire_tex,
-        //                     None,
-        //                     Rect::new(
-        //                         (block_offset.0 + i) * CELL_DRAW_SIZE,
-        //                         (block_offset.1 + j) * CELL_DRAW_SIZE,
-        //                         CELL_DRAW_SIZE as u32, CELL_DRAW_SIZE as u32))
-        //                     .unwrap();
-        //             },
-        //             Cell::Seed | Cell::Vine{..} => {
-        //                 canvas.copy(
-        //                     &plant_tex,
-        //                     None,
-        //                     Rect::new(
-        //                         (block_offset.0 + i) * CELL_DRAW_SIZE,
-        //                         (block_offset.1 + j) * CELL_DRAW_SIZE,
-        //                         CELL_DRAW_SIZE as u32, CELL_DRAW_SIZE as u32))
-        //                     .unwrap();
-        //             }
-        //         }                
-        //     }
-        // }
-        draw_times.push(draw_time.elapsed().as_micros());
-        
-
+        draw_times.push(draw_time.elapsed().as_micros());      
         canvas.present();
 
         let mut d = frame_start.elapsed().as_millis();

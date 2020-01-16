@@ -103,16 +103,7 @@ pub fn update_cell(cell: &Cell, x: i32, y: i32, read_state: &GameState, write_st
                 write_state.write_cell(Cell::Air, x, y, false);
                 return;
             }
-            let (dx, dy) = random_dir(x, y);
-            match read_state.read_cell(dx, dy) {
-                Cell::Fire{..} => {
-                     write_state.write_cell(Cell::Air, x, y, true);
-                     write_state.write_cell(Cell::Fire{heat: 30}, x, y, true);
-                },
-                _ => {
-                    write_state.write_cell(Cell::Wood{fuel: fuel.clone()}, x, y, false);
-                }
-            }
+            let _ = burn_near_fire(*cell, x, y, read_state, write_state);
         },
         Cell::Fire{heat} => {
             if heat <= &0 {
@@ -140,19 +131,25 @@ pub fn update_cell(cell: &Cell, x: i32, y: i32, read_state: &GameState, write_st
                         Cell::Sand => {
                             write_state.write_cell(Cell::Vine{growth: 50, grown: false}, x, y, true);
                         },
-                        _ => {}
+                        _ => {
+                            write_state.write_cell(Cell::Air, x, y, false)
+                        }
                     }
                 },
                 GravityResult::Falling => {}
             }
         },
         Cell::Vine{growth, grown} => {
-            write_state.write_cell(Cell::Vine{growth: *growth, grown: *grown}, x, y, !*grown);
+            if burn_near_fire(*cell, x, y, read_state, write_state) == FireResult::Burnt {
+                return;
+            }
+
+            let g = *growth == 0 || *grown;
+            write_state.write_cell(Cell::Vine{growth: *growth, grown: g}, x, y, !*grown);
 
             if *growth <= 0 || *grown {
                 return;
-            }
-            
+            }           
 
             let (dx, mut dy) = random_dir(x, y);
             if dy > y {
@@ -161,10 +158,14 @@ pub fn update_cell(cell: &Cell, x: i32, y: i32, read_state: &GameState, write_st
             match read_state.read_cell(dx, dy) {
                 Cell::Air => {                  
                     write_state.write_cell(Cell::Vine{growth: growth - 1, grown: false}, dx, dy, true);
-                    write_state.write_cell(Cell::Vine{growth: growth.clone(), grown: true}, x, y, true);
+                    write_state.write_cell(Cell::Vine{growth: *growth, grown: true}, x, y, true);
                 },
-                _ => {}
+                _ => {
+                    // No room to grow
+                    write_state.write_cell(Cell::Vine{growth: *growth - 1, grown: false}, x, y, true);
+                }
             }
+
         }
     }
 }
@@ -173,6 +174,27 @@ pub fn update_cell(cell: &Cell, x: i32, y: i32, read_state: &GameState, write_st
 enum GravityResult {
     OnGround,
     Falling
+}
+
+#[derive(PartialEq, Eq)]
+enum FireResult {
+    Unaffected,
+    Burnt
+}
+
+fn burn_near_fire(cell: Cell, x: i32, y: i32, read_state: &GameState, write_state: &mut GameState) -> FireResult{
+    let (dx, dy) = random_dir(x, y);
+    match read_state.read_cell(dx, dy) {
+        Cell::Fire{..} => {
+                write_state.write_cell(Cell::Air, x, y, true);
+                write_state.write_cell(Cell::Fire{heat: 30}, x, y, true);
+                FireResult::Burnt
+        },
+        _ => {
+            write_state.write_cell(cell, x, y, false);
+            FireResult::Unaffected
+        }
+    }
 }
 
 fn gravity(cell: Cell, x: i32, y: i32, read_state: &GameState, write_state: &mut GameState) ->  GravityResult{

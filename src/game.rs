@@ -3,6 +3,7 @@ use sdl2::render::Texture;
 use sdl2::rect::Rect;
 
 use crate::cells::{Cell, Spawner, update_cell};
+use crate::render;
 
 pub struct CellBlock {
     cells: Vec<Cell>,
@@ -74,7 +75,7 @@ impl<'a> GameState<'a> {
     pub fn reset_block(&mut self, x: i32, y: i32) {
         // TODO index blocks based on global x/y instead of block x/y?
         let r = Rect::new(x * REGION_SIZE,  y * REGION_SIZE, REGION_SIZE as u32, REGION_SIZE as u32);
-        self.texture.update(r, &vec![0u8; 16 * 16 * 24], 16 * 24);
+        self.texture.update(r, &vec![0u8; 16 * 16 * 24], 16 * 3);
         self.blocks.insert((x, y), CellBlock::new());
 
         let tx = x * REGION_SIZE;
@@ -92,7 +93,8 @@ impl<'a> GameState<'a> {
             Cell::Air => {},
             _ => {
                 let r = Rect::new( x, y, 1, 1);
-                self.texture.update(r, &vec![255u8, 16u8, 16u8], 256 * 24); // TODO set position and color
+                let c = render::get_cell_color(cell);
+                self.texture.update(r, &vec![c.b, c.g, c.r], 3); // TODO set position and color
             }
         }
         let b = self.get_block_mut(bx,by);
@@ -131,6 +133,7 @@ pub fn update(read_state: &GameState, write_state: &mut GameState, spawner: &mut
     // copy any blocks that won't
     for (pos, block) in read_state.blocks.iter() {
         if block.dirty {
+            println!("Updating: ({},{})", pos.0, pos.1);
             write_state.reset_block(pos.0, pos.1);
         }
         else{
