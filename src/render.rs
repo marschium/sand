@@ -21,6 +21,9 @@ pub fn get_cell_color(cell: Cell) -> Color {
         Cell::Seed | Cell::Vine{..} => {
             Color::RGB(0, 116, 11)
         }
+        Cell::Water{..} => {
+            Color::RGB(16, 16, 116)
+        }
         _ => Color::RGB(0, 0, 0)
     }
 }

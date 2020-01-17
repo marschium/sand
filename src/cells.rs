@@ -10,6 +10,7 @@ pub enum Cell {
     Fire{heat: i32},
     Seed,
     Vine{growth: i32, grown: bool},
+    Water{dx: i32}
 }
 
 pub struct RadialSpawner{
@@ -165,7 +166,27 @@ pub fn update_cell(cell: &Cell, x: i32, y: i32, read_state: &GameState, write_st
                     write_state.write_cell(Cell::Vine{growth: *growth - 1, grown: false}, x, y, true);
                 }
             }
-
+        },
+        Cell::Water{dx} => {
+            match gravity(*cell, x, y, read_state, write_state) {
+                GravityResult::OnGround => {
+                    let mut nx = *dx + x;
+                    if *dx == 0 {
+                        nx = random_axis(x);
+                    }
+                    // TODO move into func that checks bound
+                    let d = nx - x;
+                    if read_state.is_empty(nx, y) && write_state.is_empty(nx, y) {
+                        write_state.get_block_mut((x - d) / REGION_SIZE, (y) / REGION_SIZE).dirty = true;
+                        write_state.write_cell(Cell::Air, x, y, false);
+                        write_state.write_cell(Cell::Water{dx: d}, nx, y, true);
+                    }
+                    else {
+                        write_state.write_cell(Cell::Water{dx: 0}, x, y, false);
+                    }
+                },
+                _ => {}
+            }
         }
     }
 }

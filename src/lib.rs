@@ -74,6 +74,9 @@ pub fn start() {
                 },
                 Event::KeyDown {keycode: Some(Keycode::E), ..} => {
                     spawner.set_cell(Cell::Seed);
+                },
+                Event::KeyDown {keycode: Some(Keycode::R), ..} => {
+                    spawner.set_cell(Cell::Water{dx: 0});
                 }
                 _ => {}
             }

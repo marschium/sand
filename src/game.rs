@@ -133,7 +133,7 @@ pub fn update(read_state: &GameState, write_state: &mut GameState, spawner: &mut
     // copy any blocks that won't
     for (pos, block) in read_state.blocks.iter() {
         if block.dirty {
-            println!("Updating: ({},{})", pos.0, pos.1);
+            // println!("Updating: ({},{})", pos.0, pos.1);
             write_state.reset_block(pos.0, pos.1);
         }
         else{
