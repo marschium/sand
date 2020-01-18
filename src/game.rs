@@ -68,8 +68,17 @@ impl<'a> GameState<'a> {
         }
     }
 
-    pub fn get_block_mut(&mut self, bx: i32, by: i32) -> &mut CellBlock {
-        self.blocks.get_mut(&(bx, by)).unwrap()
+    pub fn get_block_mut(&mut self, bx: i32, by: i32) -> Option<&mut CellBlock> {
+        self.blocks.get_mut(&(bx, by))
+    }
+
+    pub fn mark_block_dirty(&mut self, x: i32, y: i32) {
+        match self.get_block_mut((x) / REGION_SIZE, (y) / REGION_SIZE) {
+            Some(b) => {
+                b.dirty = true;
+            },
+            None => {}
+        }
     }
 
     pub fn reset_block(&mut self, x: i32, y: i32) {
@@ -84,26 +93,6 @@ impl<'a> GameState<'a> {
 
     }
 
-    pub fn write_cell(&mut self, cell: Cell, x: i32, y: i32, dirty: bool) {
-        let bx = x / REGION_SIZE;
-        let by = y / REGION_SIZE;
-        let ix = x % REGION_SIZE;
-        let iy = y % REGION_SIZE;
-        match cell {
-            Cell::Air => {},
-            _ => {
-                let r = Rect::new( x, y, 1, 1);
-                let c = render::get_cell_color(cell);
-                self.texture.update(r, &vec![c.b, c.g, c.r], 3); // TODO set position and color
-            }
-        }
-        let b = self.get_block_mut(bx,by);
-        if dirty {
-            b.dirty = dirty;
-        }
-        b.cells[(ix + (iy * REGION_SIZE)) as usize] = cell;   
-    }
-
     pub fn get_tex(&mut self) -> &mut Texture<'a> {
         &mut self.texture
     }
@@ -113,8 +102,17 @@ impl<'a> GameState<'a> {
         let by = y / REGION_SIZE;
         let ix = x % REGION_SIZE;
         let iy = y % REGION_SIZE;
-        let b = self.blocks.get(&(bx, by)).unwrap();
-        b.cells[(ix + (iy * REGION_SIZE)) as usize] == Cell::Air
+        match self.blocks.get(&(bx, by)) {
+            Some(b) => {
+                if ix < 0 || ix >= REGION_SIZE || y < 0 || iy >= REGION_SIZE {
+                    return false;
+                }
+                return b.cells[(ix + (iy * REGION_SIZE)) as usize] == Cell::Air
+            },
+            None => {
+                return false;
+            }
+        }
     }
 
     pub fn read_cell(&self, x: i32, y: i32) -> &Cell {
@@ -122,8 +120,46 @@ impl<'a> GameState<'a> {
         let by = y / REGION_SIZE;
         let ix = x % REGION_SIZE;
         let iy = y % REGION_SIZE;
-        let b = self.blocks.get(&(bx, by)).unwrap();
-        &b.cells[(ix + (iy * REGION_SIZE)) as usize]
+        match self.blocks.get(&(bx, by)) {
+            Some(b) => {
+                if ix < 0 || ix >= REGION_SIZE || y < 0 || iy >= REGION_SIZE {
+                    return &Cell::Air; // Maybe a magic enum for boundary?
+                }
+                &b.cells[(ix + (iy * REGION_SIZE)) as usize]
+            },
+            None => {
+                &Cell::Air // Maybe a magic enum for boundary?
+            }
+        }
+    }
+
+    pub fn write_cell(&mut self, cell: Cell, x: i32, y: i32, dirty: bool) {
+        let bx = x / REGION_SIZE;
+        let by = y / REGION_SIZE;
+        let ix = x % REGION_SIZE;
+        let iy = y % REGION_SIZE;
+
+        if ix < 0 || ix >= REGION_SIZE || iy < 0 || iy >= REGION_SIZE {
+            return;
+        }
+
+        match self.get_block_mut(bx,by) {
+            Some(b) => {
+                if dirty {
+                    b.dirty = dirty;
+                }
+                b.cells[(ix + (iy * REGION_SIZE)) as usize] = cell;
+                match cell {
+                    Cell::Air => {},
+                    _ => {
+                        let r = Rect::new( x, y, 1, 1);
+                        let c = render::get_cell_color(cell);
+                        self.texture.update(r, &vec![c.b, c.g, c.r], 3); // TODO set position and color
+                    }
+                }
+            },
+            None => {}
+        }         
     }
 }
 

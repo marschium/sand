@@ -177,7 +177,7 @@ pub fn update_cell(cell: &Cell, x: i32, y: i32, read_state: &GameState, write_st
                     // TODO move into func that checks bound
                     let d = nx - x;
                     if read_state.is_empty(nx, y) && write_state.is_empty(nx, y) {
-                        write_state.get_block_mut((x - d) / REGION_SIZE, (y) / REGION_SIZE).dirty = true;
+                        write_state.mark_block_dirty(x -d, y);
                         write_state.write_cell(Cell::Air, x, y, false);
                         write_state.write_cell(Cell::Water{dx: d}, nx, y, true);
                     }
@@ -228,12 +228,12 @@ fn gravity(cell: Cell, x: i32, y: i32, read_state: &GameState, write_state: &mut
     let height = (read_state.size as i32) - 1;
     if  new_y <= height && read_state.is_empty(x, new_y) && write_state.is_empty(x, new_y) {
         write_state.write_cell(cell, x, new_y, true);
-        write_state.get_block_mut((x - sideways) / REGION_SIZE, (y - 1) / REGION_SIZE).dirty = true;
+        write_state.mark_block_dirty(x - sideways, y - 1);
         GravityResult::Falling
     }
     else if new_y <= height && new_x >= 0 && new_x <= height && read_state.is_empty(new_x, new_y)  && write_state.is_empty(new_x, new_y) {
-         write_state.write_cell(cell, new_x, new_y, true);                 
-         write_state.get_block_mut((x - sideways) / REGION_SIZE, (y - 1) / REGION_SIZE).dirty = true;
+         write_state.write_cell(cell, new_x, new_y, true);  
+         write_state.mark_block_dirty(x - sideways, y - 1);
          GravityResult::Falling
     }
     else {

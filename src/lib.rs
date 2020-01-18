@@ -1,10 +1,11 @@
 extern crate sdl2;
+use std::ops::Add;
 use std::collections::HashMap;
 use sdl2::rect::Rect;
 use sdl2::pixels::Color;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
-use std::time::Instant;
+use std::time::{Instant, Duration};
 
 mod game;
 mod cells;
@@ -36,9 +37,9 @@ pub fn start() {
     let mut write_state = game::GameState::new(MAP_SIZE,tex_b);
 
     let mut frame_start = Instant::now();
-    let mut ms_since_update = 0u128;
 
-    let mut frames_since_log = 0u32;
+    let mut frames = 0u32;
+    let mut frame_log_timer = Duration::from_secs(0);
     let mut update_times = Vec::new();
     let mut draw_times = Vec::new();
 
@@ -82,36 +83,37 @@ pub fn start() {
             }
         }
 
+        // UPDATE
+        let update_start = Instant::now();
 
-        if ms_since_update >= 16 { // 60 updates per sec
-            frames_since_log += 1;
-            ms_since_update = 0;
-            let update_start = Instant::now();
+        canvas.with_texture_canvas(write_state.get_tex(), |c| {
+            c.copy(read_state.get_tex(), None, None);
+            });
 
-            canvas.with_texture_canvas(write_state.get_tex(), |c| {
-                c.copy(read_state.get_tex(), None, None);
-             });
+        game::update(&read_state, &mut write_state, &mut spawner);
+        update_times.push(update_start.elapsed().as_micros());
 
-            game::update(&read_state, &mut write_state, &mut spawner);
-            update_times.push(update_start.elapsed().as_micros());
+        let tmp = read_state;
+        read_state = write_state;
+        write_state = tmp;
 
-            let tmp = read_state;
-            read_state = write_state;
-            write_state = tmp;
-        }
-
+        // DRAW
         let draw_time = Instant::now();
         canvas.copy(&read_state.get_tex(), None, None).unwrap();
         draw_times.push(draw_time.elapsed().as_micros());      
         canvas.present();
 
-        let mut d = frame_start.elapsed().as_millis();
-        if d == 0 {
-            d = 1;
+        // SLEEP
+        let mut frame_end = frame_start.elapsed();
+        frames += 1;
+        if(frame_end < Duration::from_millis(16)) {
+            std::thread::sleep(Duration::from_millis(16) - frame_end);
         }
-        ms_since_update += d;
+        frame_log_timer = frame_log_timer.add(frame_start.elapsed());
 
-        if frames_since_log >= 60 {
+        if frame_log_timer >= Duration::from_millis(1000) {
+            println!("FPS: {}", frames);
+
             let mut sum : u128 =  update_times.iter().sum();
             let mut avg =  sum as f64 /  update_times.len() as f64;
             println!("Update: {}", avg);
@@ -120,8 +122,8 @@ pub fn start() {
             avg = sum as f64 / draw_times.len() as f64;
             println!("Draw: {}", avg);
 
-
-            frames_since_log = 0;
+            frames = 0;
+            frame_log_timer = Duration::from_millis(0);
             update_times.clear();
             draw_times.clear();
         }
