@@ -6,11 +6,12 @@ use crate::game::{GameState, REGION_SIZE};
 pub enum Cell {
     Air,
     Sand,
-    Wood{fuel: i32},
+    Wood,
     Fire{heat: i32},
     Seed,
     Vine{growth: i32, grown: bool},
-    Water{dx: i32}
+    Water{dx: i32},
+    Acid{t: i32}
 }
 
 pub struct RadialSpawner{
@@ -24,11 +25,11 @@ pub struct RadialSpawner{
 impl RadialSpawner {
     pub fn new(x : i32, y: i32) -> RadialSpawner {
         let deltas = vec! [
-            (2,0), (4,0), (6,0),
-        (0,2), (2,2), (4,2), (6,2), (8,2),
-        (0,4), (2,4), (4,4), (6,4), (8,4),
-        (0,6), (2,6), (4,6), (6,6), (8,6),
-            (2,8), (4,8), (6,8),
+            (0,0), (1,0), (2,0), (3,0), (4,0), (5,0), (6,0),
+        (0,2), (1,2), (2,2), (3,2), (4,2), (5,2), (6,2), (7,2), (8,2),
+        (0,4), (1,4), (2,4), (3,4), (4,4), (5,4), (6,4), (7,4), (8,4),
+        (0,6), (1,6), (2,6), (3,6), (4,6), (5,6), (6,6), (7,6), (8,6),
+            (0,8), (1,8), (2,8), (3,8), (4,8),(5,8), (6,8),
         ];
         RadialSpawner {
             x,
@@ -93,22 +94,28 @@ pub fn random_dir(x: i32, y: i32) -> (i32, i32) {
     (random_axis(x), random_axis(y))
 }
 
-pub fn update_cell(cell: &Cell, x: i32, y: i32, read_state: &GameState, write_state: &mut GameState) {
+pub fn update_cell(cell: Cell, x: i32, y: i32, read_state: &GameState, write_state: &mut GameState) {
     match cell {
         Cell::Air => {}
         Cell::Sand => {
-            let _ = gravity(Cell::Sand, x, y, read_state, write_state);
-        },
-        Cell::Wood{fuel} => {
-            if fuel <= &0 {                
-                write_state.write_cell(Cell::Air, x, y, false);
+            if dissolve_in_acid(x, y, read_state, write_state) == AcidResult::Dissolved {
                 return;
             }
-            let _ = burn_near_fire(*cell, x, y, read_state, write_state);
+            let _ = gravity(Cell::Sand, x, y, read_state, write_state);
+        },
+        Cell::Wood => {
+            if burn_near_fire(x, y, read_state, write_state) == FireResult::Burnt {
+                return;
+            }
+
+            if dissolve_in_acid(x, y, read_state, write_state) == AcidResult::Dissolved {
+                return;
+            }
+
+            write_state.write_cell(Cell::Wood, x, y, false);
         },
         Cell::Fire{heat} => {
-            if heat <= &0 {
-                write_state.write_cell(Cell::Air, x, y, false);
+            if heat <= 0 {
                 return;
             }
             let (dx, dy) = random_dir(x, y);
@@ -133,7 +140,7 @@ pub fn update_cell(cell: &Cell, x: i32, y: i32, read_state: &GameState, write_st
                             write_state.write_cell(Cell::Vine{growth: 50, grown: false}, x, y, true);
                         },
                         _ => {
-                            write_state.write_cell(Cell::Air, x, y, false)
+                            write_state.write_cell(Cell::Air, x, y, true)
                         }
                     }
                 },
@@ -141,14 +148,18 @@ pub fn update_cell(cell: &Cell, x: i32, y: i32, read_state: &GameState, write_st
             }
         },
         Cell::Vine{growth, grown} => {
-            if burn_near_fire(*cell, x, y, read_state, write_state) == FireResult::Burnt {
+            if burn_near_fire(x, y, read_state, write_state) == FireResult::Burnt {
                 return;
             }
 
-            let g = *growth == 0 || *grown;
-            write_state.write_cell(Cell::Vine{growth: *growth, grown: g}, x, y, !*grown);
+            if dissolve_in_acid(x, y, read_state, write_state) == AcidResult::Dissolved {
+                return;
+            }
 
-            if *growth <= 0 || *grown {
+            let g = growth == 0 || grown;
+            write_state.write_cell(Cell::Vine{growth: growth, grown: g}, x, y, !grown);
+
+            if growth <= 0 || grown {
                 return;
             }           
 
@@ -159,31 +170,45 @@ pub fn update_cell(cell: &Cell, x: i32, y: i32, read_state: &GameState, write_st
             match read_state.read_cell(dx, dy) {
                 Cell::Air => {                  
                     write_state.write_cell(Cell::Vine{growth: growth - 1, grown: false}, dx, dy, true);
-                    write_state.write_cell(Cell::Vine{growth: *growth, grown: true}, x, y, true);
+                    write_state.write_cell(Cell::Vine{growth: growth, grown: true}, x, y, true);
                 },
                 _ => {
                     // No room to grow
-                    write_state.write_cell(Cell::Vine{growth: *growth - 1, grown: false}, x, y, true);
+                    write_state.write_cell(Cell::Vine{growth: growth - 1, grown: false}, x, y, true);
                 }
             }
         },
         Cell::Water{dx} => {
-            match gravity(*cell, x, y, read_state, write_state) {
+            if dissolve_in_acid(x, y, read_state, write_state) == AcidResult::Dissolved {
+                return;
+            }
+            match gravity(cell, x, y, read_state, write_state) {
                 GravityResult::OnGround => {
-                    let mut nx = *dx + x;
-                    if *dx == 0 {
-                        nx = random_axis(x);
+                    let mut sideways = dx + x;
+                    if dx == 0 {
+                        sideways = random_axis(x);
                     }
-                    // TODO move into func that checks bound
-                    let d = nx - x;
-                    if read_state.is_empty(nx, y) && write_state.is_empty(nx, y) {
-                        write_state.mark_block_dirty(x -d, y);
+                    let delta = sideways - x;
+                    let inverse_sideways =  x - delta;
+                    if read_state.is_empty(sideways, y) && write_state.is_empty(sideways, y) {
+                        write_state.mark_block_dirty(inverse_sideways, y);
                         write_state.write_cell(Cell::Air, x, y, false);
-                        write_state.write_cell(Cell::Water{dx: d}, nx, y, true);
+                        write_state.write_cell(Cell::Water{dx: delta}, sideways, y, true);
                     }
                     else {
-                        write_state.write_cell(Cell::Water{dx: 0}, x, y, false);
+                        write_state.write_cell(Cell::Water{dx: 0}, x, y, true);
                     }
+                },
+                _ => {}
+            }
+        },
+        Cell::Acid{t} => {
+            match gravity(Cell::Acid{t: 1}, x, y, read_state, write_state) {
+                GravityResult::OnGround => {
+                    if t > 0 {
+                        write_state.write_cell(Cell::Air, x, y, false);
+                    }
+                    write_state.mark_block_dirty(x, y + 1);
                 },
                 _ => {}
             }
@@ -203,17 +228,34 @@ enum FireResult {
     Burnt
 }
 
-fn burn_near_fire(cell: Cell, x: i32, y: i32, read_state: &GameState, write_state: &mut GameState) -> FireResult{
+#[derive(PartialEq, Eq)]
+enum AcidResult {
+    Unaffected,
+    Dissolved
+}
+
+fn burn_near_fire(x: i32, y: i32, read_state: &GameState, write_state: &mut GameState) -> FireResult{
     let (dx, dy) = random_dir(x, y);
     match read_state.read_cell(dx, dy) {
         Cell::Fire{..} => {
-                write_state.write_cell(Cell::Air, x, y, true);
                 write_state.write_cell(Cell::Fire{heat: 30}, x, y, true);
                 FireResult::Burnt
         },
         _ => {
-            write_state.write_cell(cell, x, y, false);
             FireResult::Unaffected
+        }
+    }
+}
+
+fn dissolve_in_acid(x: i32, y: i32, read_state: &GameState, write_state: &mut GameState) -> AcidResult {
+    let (dx, dy) = random_dir(x, y);
+    match read_state.read_cell(dx, dy) {
+        Cell::Acid{..}=> {
+            write_state.write_cell(Cell::Air, dx, dy, false);
+            AcidResult::Dissolved
+        },
+        _ => {
+            AcidResult::Unaffected
         }
     }
 }
@@ -228,12 +270,16 @@ fn gravity(cell: Cell, x: i32, y: i32, read_state: &GameState, write_state: &mut
     let height = (read_state.size as i32) - 1;
     if  new_y <= height && read_state.is_empty(x, new_y) && write_state.is_empty(x, new_y) {
         write_state.write_cell(cell, x, new_y, true);
-        write_state.mark_block_dirty(x - sideways, y - 1);
+        if x % REGION_SIZE == 0 || y % REGION_SIZE == 0 {
+            write_state.mark_block_dirty(x - sideways, y - 1);
+        }
         GravityResult::Falling
     }
     else if new_y <= height && new_x >= 0 && new_x <= height && read_state.is_empty(new_x, new_y)  && write_state.is_empty(new_x, new_y) {
          write_state.write_cell(cell, new_x, new_y, true);  
-         write_state.mark_block_dirty(x - sideways, y - 1);
+         if x & REGION_SIZE == 0 || y % REGION_SIZE == 0 {
+            write_state.mark_block_dirty(x - sideways, y - 1);
+         }
          GravityResult::Falling
     }
     else {

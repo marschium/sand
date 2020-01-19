@@ -6,41 +6,37 @@ use crate::cells::{Cell, Spawner, update_cell};
 use crate::render;
 
 pub struct CellBlock {
-    cells: Vec<Cell>,
+    cells: HashMap<(i32, i32), Cell>,
     pub dirty: bool,
-    iter_x: i32,
-    iter_y: i32,
 }
 
 impl CellBlock {
 
     pub fn new() -> Self {
-        let cells = vec![Cell::Air; (REGION_SIZE * REGION_SIZE) as usize];
+        let cells = HashMap::new();
         CellBlock {
             cells,
             dirty: true,
-            iter_x: 0,
-            iter_y: 0
         }
     }
 
-    pub fn cells(&self) -> Vec<(&Cell, i32, i32)> {
+    fn set_cell(&mut self, cell: Cell, x: i32, y: i32) {
+        self.cells.insert((x, y), cell);
+    }
 
-        fn idx_to_coord(i: usize) -> (i32, i32) {
-            let x = i as i32 % REGION_SIZE;
-            let y = i as i32 / REGION_SIZE;
-            (x, y)
+    fn get_cell(&self, x: i32, y: i32) -> &Cell {
+        match self.cells.get(&(x, y)) {
+            Some(c) => {
+                &c
+            },
+            None => {
+                &Cell::Air
+            }
         }
+    }
 
-        // TODO don't create a new vector just iterate over existing
-        return self.cells
-            .iter()
-            .enumerate()
-            .map(|(i, x)| {
-                let c = idx_to_coord(i);
-                (x, c.0, c.1)
-            })
-            .collect();
+    fn clear(&mut self) {
+        self.cells.clear();
     }
 }
 
@@ -56,13 +52,14 @@ impl<'a> GameState<'a> {
 
     pub fn new(size: i32, texture: Texture<'a>) -> Self {
         let mut blocks = HashMap::new();
-        for x in 0..size {
-            for y in 0..size {
+        let block_num = size / REGION_SIZE;
+        for x in 0..block_num {
+            for y in 0..block_num {
                 blocks.insert((x as i32, y as i32), CellBlock::new());
             }
         }
         GameState {
-            size: size * REGION_SIZE,
+            size,
             blocks,
             texture,
         }
@@ -85,12 +82,7 @@ impl<'a> GameState<'a> {
         // TODO index blocks based on global x/y instead of block x/y?
         let r = Rect::new(x * REGION_SIZE,  y * REGION_SIZE, REGION_SIZE as u32, REGION_SIZE as u32);
         self.texture.update(r, &vec![0u8; 16 * 16 * 24], 16 * 3);
-        self.blocks.insert((x, y), CellBlock::new());
-
-        let tx = x * REGION_SIZE;
-        let ty = y * REGION_SIZE;
-        let i = tx + (ty * REGION_SIZE);
-
+        self.blocks.get_mut(&(x, y)).unwrap().clear();
     }
 
     pub fn get_tex(&mut self) -> &mut Texture<'a> {
@@ -102,12 +94,15 @@ impl<'a> GameState<'a> {
         let by = y / REGION_SIZE;
         let ix = x % REGION_SIZE;
         let iy = y % REGION_SIZE;
+
+        if ix < 0 || ix >= REGION_SIZE || iy < 0 || iy >= REGION_SIZE {
+            return false;
+        }
+
         match self.blocks.get(&(bx, by)) {
             Some(b) => {
-                if ix < 0 || ix >= REGION_SIZE || y < 0 || iy >= REGION_SIZE {
-                    return false;
-                }
-                return b.cells[(ix + (iy * REGION_SIZE)) as usize] == Cell::Air
+                return b.get_cell(ix, iy) == &Cell::Air;
+                //return b.cells[(ix + (iy * REGION_SIZE)) as usize] == Cell::Air
             },
             None => {
                 return false;
@@ -120,12 +115,15 @@ impl<'a> GameState<'a> {
         let by = y / REGION_SIZE;
         let ix = x % REGION_SIZE;
         let iy = y % REGION_SIZE;
+
+        if ix < 0 || ix >= REGION_SIZE || iy < 0 || iy >= REGION_SIZE {
+            return &Cell::Air; // Maybe a magic enum for boundary?
+        }
+
         match self.blocks.get(&(bx, by)) {
             Some(b) => {
-                if ix < 0 || ix >= REGION_SIZE || y < 0 || iy >= REGION_SIZE {
-                    return &Cell::Air; // Maybe a magic enum for boundary?
-                }
-                &b.cells[(ix + (iy * REGION_SIZE)) as usize]
+                b.get_cell(ix, iy)
+                //&b.cells[(ix + (iy * REGION_SIZE)) as usize]
             },
             None => {
                 &Cell::Air // Maybe a magic enum for boundary?
@@ -148,7 +146,8 @@ impl<'a> GameState<'a> {
                 if dirty {
                     b.dirty = dirty;
                 }
-                b.cells[(ix + (iy * REGION_SIZE)) as usize] = cell;
+                b.set_cell(cell, ix, iy);
+                //b.cells[(ix + (iy * REGION_SIZE)) as usize] = cell;
                 match cell {
                     Cell::Air => {},
                     _ => {
@@ -169,7 +168,6 @@ pub fn update(read_state: &GameState, write_state: &mut GameState, spawner: &mut
     // copy any blocks that won't
     for (pos, block) in read_state.blocks.iter() {
         if block.dirty {
-            // println!("Updating: ({},{})", pos.0, pos.1);
             write_state.reset_block(pos.0, pos.1);
         }
         else{
@@ -183,15 +181,20 @@ pub fn update(read_state: &GameState, write_state: &mut GameState, spawner: &mut
         block.dirty = false;
     }
     
-    spawner.spawn(write_state); // TODO FIX TRYING TO SET OUTSIDE WORLD
+    spawner.spawn(write_state);
 
     for (pos, block) in read_state.blocks.iter() {
         let block_offset = (pos.0 * REGION_SIZE, pos.1 * REGION_SIZE);
         if block.dirty {
-            for (c, i, j) in block.cells() {
+            for ((i, j), c) in block.cells.iter() {
                 let world_pos = (i + block_offset.0, j + block_offset.1);
-                update_cell(c, world_pos.0, world_pos.1, read_state, write_state);
+                update_cell(c.clone(), world_pos.0, world_pos.1, read_state, write_state);
             }
+            // for (c, i, j) in block.cells.iter().enumerate().map(|(i, x)| {
+            //     let c = idx_to_coord(i);
+            //     (x, c.0, c.1)
+            // }){
+            // }
         }            
     }
 }

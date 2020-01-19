@@ -1,4 +1,5 @@
 extern crate sdl2;
+
 use std::ops::Add;
 use std::collections::HashMap;
 use sdl2::rect::Rect;
@@ -7,20 +8,22 @@ use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use std::time::{Instant, Duration};
 
+
 mod game;
 mod cells;
 mod render;
 
 use cells::{Cell, RadialSpawner};
 
-const CELL_DRAW_SIZE: i32 = 2;
-const MAP_SIZE: i32 = 16;
+const SCREEN_SIZE: i32 = 512;
+const MAP_SIZE: i32 = 256;
+const MOUSE_RATIO: f32 = MAP_SIZE as f32 / SCREEN_SIZE as f32;
 
 pub fn start() {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
 
-    let window = video_subsystem.window("sand", 512, 512)
+    let window = video_subsystem.window("sand", SCREEN_SIZE as u32, SCREEN_SIZE as u32)
         .position_centered()
         .build()
         .unwrap();
@@ -30,8 +33,8 @@ pub fn start() {
 
     let texture_creator = canvas.texture_creator();
 
-    let tex_a = texture_creator.create_texture_target(None, 256, 256).map_err(|x| x.to_string()).unwrap();
-    let tex_b = texture_creator.create_texture_target(None, 256, 256).map_err(|x| x.to_string()).unwrap();
+    let tex_a = texture_creator.create_texture_target(None, MAP_SIZE as u32, MAP_SIZE as u32).map_err(|x| x.to_string()).unwrap();
+    let tex_b = texture_creator.create_texture_target(None, MAP_SIZE as u32, MAP_SIZE as u32).map_err(|x| x.to_string()).unwrap();
 
     let mut read_state = game::GameState::new(MAP_SIZE, tex_a);
     let mut write_state = game::GameState::new(MAP_SIZE,tex_b);
@@ -55,7 +58,7 @@ pub fn start() {
         for event in event_pump.poll_iter() { 
             match event {
                 Event::MouseMotion{x, y, ..} => {
-                    spawner.set_pos(x / CELL_DRAW_SIZE, y / CELL_DRAW_SIZE);
+                    spawner.set_pos((x as f32 * MOUSE_RATIO) as i32, (y as f32 * MOUSE_RATIO) as i32);
                 }
                 Event::MouseButtonDown{..} => {
                     spawner.enable();
@@ -68,7 +71,7 @@ pub fn start() {
                     break 'running
                 },
                 Event::KeyDown {keycode: Some(Keycode::Q), ..} => {
-                    spawner.set_cell(Cell::Wood{fuel: 5});
+                    spawner.set_cell(Cell::Wood);
                 },
                 Event::KeyDown {keycode: Some(Keycode::W), ..} => {
                     spawner.set_cell(Cell::Fire{heat: 30});
@@ -78,12 +81,16 @@ pub fn start() {
                 },
                 Event::KeyDown {keycode: Some(Keycode::R), ..} => {
                     spawner.set_cell(Cell::Water{dx: 0});
+                },
+                Event::KeyDown {keycode: Some(Keycode::T), ..} => {
+                    spawner.set_cell(Cell::Acid{t: 0});
                 }
                 _ => {}
             }
         }
 
         // UPDATE
+
         let update_start = Instant::now();
 
         canvas.with_texture_canvas(write_state.get_tex(), |c| {
