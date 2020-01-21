@@ -50,7 +50,6 @@ pub fn start() {
 
     'running: loop {
         frame_start = Instant::now();
-        // TODO get constant framerate
 
         for event in event_pump.poll_iter() { 
             match event {
