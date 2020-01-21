@@ -12,18 +12,15 @@ use std::time::{Instant, Duration};
 mod game;
 mod cells;
 mod render;
+mod input;
 
 use cells::{Cell, RadialSpawner};
-
-const SCREEN_SIZE: i32 = 512;
-const MAP_SIZE: i32 = 256;
-const MOUSE_RATIO: f32 = MAP_SIZE as f32 / SCREEN_SIZE as f32;
 
 pub fn start() {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
 
-    let window = video_subsystem.window("sand", SCREEN_SIZE as u32, SCREEN_SIZE as u32)
+    let window = video_subsystem.window("sand", render::SCREEN_SIZE as u32, 580 as u32)
         .position_centered()
         .build()
         .unwrap();
@@ -33,11 +30,13 @@ pub fn start() {
 
     let texture_creator = canvas.texture_creator();
 
-    let tex_a = texture_creator.create_texture_target(None, MAP_SIZE as u32, MAP_SIZE as u32).map_err(|x| x.to_string()).unwrap();
-    let tex_b = texture_creator.create_texture_target(None, MAP_SIZE as u32, MAP_SIZE as u32).map_err(|x| x.to_string()).unwrap();
+    let hud = render::Hud::new(&texture_creator);
 
-    let mut read_state = game::GameState::new(MAP_SIZE, tex_a);
-    let mut write_state = game::GameState::new(MAP_SIZE,tex_b);
+    let tex_a = texture_creator.create_texture_target(None, render::MAP_SIZE as u32, render::MAP_SIZE as u32).map_err(|x| x.to_string()).unwrap();
+    let tex_b = texture_creator.create_texture_target(None, render::MAP_SIZE as u32, render::MAP_SIZE as u32).map_err(|x| x.to_string()).unwrap();
+
+    let mut read_state = game::GameState::new(render::MAP_SIZE, tex_a);
+    let mut write_state = game::GameState::new(render::MAP_SIZE,tex_b);
 
     let mut frame_start = Instant::now();
 
@@ -47,8 +46,6 @@ pub fn start() {
     let mut draw_times = Vec::new();
 
     // TODO move?
-    let mut mouse_down = false;
-    let mut mouse_pos = (0i32, 0i32);
     let mut spawner = RadialSpawner::new(5, 5);
 
     'running: loop {
@@ -57,40 +54,21 @@ pub fn start() {
 
         for event in event_pump.poll_iter() { 
             match event {
-                Event::MouseMotion{x, y, ..} => {
-                    spawner.set_pos((x as f32 * MOUSE_RATIO) as i32, (y as f32 * MOUSE_RATIO) as i32);
-                }
-                Event::MouseButtonDown{..} => {
-                    spawner.enable();
-                },
-                Event::MouseButtonUp{..} => {
-                    spawner.disable();
-                },
                 Event::Quit {..} |
                 Event::KeyDown { keycode: Some(Keycode::Escape), ..} => {
                     break 'running
                 },
-                Event::KeyDown {keycode: Some(Keycode::Q), ..} => {
-                    spawner.set_cell(Cell::Wood);
-                },
-                Event::KeyDown {keycode: Some(Keycode::W), ..} => {
-                    spawner.set_cell(Cell::Fire{heat: 30});
-                },
-                Event::KeyDown {keycode: Some(Keycode::E), ..} => {
-                    spawner.set_cell(Cell::Seed);
-                },
-                Event::KeyDown {keycode: Some(Keycode::R), ..} => {
-                    spawner.set_cell(Cell::Water{dx: 0});
-                },
-                Event::KeyDown {keycode: Some(Keycode::T), ..} => {
-                    spawner.set_cell(Cell::Acid{t: 0});
+                Event::KeyDown {keycode: Some(Keycode::Delete), ..} => {
+                    read_state.clear();
+                    write_state.clear();
                 }
-                _ => {}
+                _ => {
+                    input::update_spawner(event, &mut spawner);
+                }
             }
         }
 
         // UPDATE
-
         let update_start = Instant::now();
 
         canvas.with_texture_canvas(write_state.get_tex(), |c| {
@@ -106,7 +84,9 @@ pub fn start() {
 
         // DRAW
         let draw_time = Instant::now();
-        canvas.copy(&read_state.get_tex(), None, None).unwrap();
+        canvas.copy(&read_state.get_tex(), None, Rect::new(0, 0, 512, 512)).unwrap();
+        hud.draw(&mut canvas);
+
         draw_times.push(draw_time.elapsed().as_micros());      
         canvas.present();
 
@@ -116,8 +96,9 @@ pub fn start() {
         if(frame_end < Duration::from_millis(16)) {
             std::thread::sleep(Duration::from_millis(16) - frame_end);
         }
-        frame_log_timer = frame_log_timer.add(frame_start.elapsed());
 
+        // LOG
+        frame_log_timer = frame_log_timer.add(frame_start.elapsed());
         if frame_log_timer >= Duration::from_millis(1000) {
             println!("FPS: {}", frames);
 

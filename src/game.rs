@@ -160,6 +160,12 @@ impl<'a> GameState<'a> {
             None => {}
         }         
     }
+
+    pub fn clear(&mut self) {
+        for (_, block) in self.blocks.iter_mut() {
+            block.clear();
+        }
+    }
 }
 
 pub fn update(read_state: &GameState, write_state: &mut GameState, spawner: &mut impl Spawner) {
