@@ -11,7 +11,9 @@ pub enum Cell {
     Seed,
     Vine{growth: i32, grown: bool},
     Water{dx: i32},
-    Acid{t: i32}
+    Acid{t: i32},
+    Rocket{last_pos: (i32, i32), i: i32},
+    Stone,
 }
 
 pub struct RadialSpawner{
@@ -104,8 +106,14 @@ pub fn update_cell(cell: Cell, x: i32, y: i32, read_state: &GameState, write_sta
         return;
     }
 
+
+    let mut rng = rand::thread_rng();
+
     match cell {
         Cell::Air => {},
+        Cell::Stone => {
+            write_state.write_cell(Cell::Stone, x, y, false);
+        }
         Cell::Sand => {
             if dissolve_in_acid(x, y, read_state, write_state) == AcidResult::Dissolved {
                 return;
@@ -196,9 +204,7 @@ pub fn update_cell(cell: Cell, x: i32, y: i32, read_state: &GameState, write_sta
             match gravity(cell, x, y, read_state, write_state) {
                 GravityResult::OnGround => {
 
-                                       
-
-                    // ---------- TEST ----------
+                    // FALL THROUGH
                     match read_state.read_cell(x, y - 1) {
                         Cell::Sand => {
                             write_state.write_cell(Cell::Water{dx: 0}, x, y - 1, true);
@@ -207,9 +213,8 @@ pub fn update_cell(cell: Cell, x: i32, y: i32, read_state: &GameState, write_sta
                         },
                         _ => {}
                     }
-                    // ---------- TEST ----------
 
-
+                    // MOVE SIDEWAYS
                     let mut sideways = dx + x;
                     if dx == 0 {
                         sideways = random_axis(x);
@@ -238,6 +243,34 @@ pub fn update_cell(cell: Cell, x: i32, y: i32, read_state: &GameState, write_sta
                 },
                 _ => {}
             }
+        },
+        Cell::Rocket{last_pos: (lx, ly), mut i} => {
+            if i == 0 {
+                return;
+            }      
+            if i < 0 {
+                i = rng.gen_range(30, 100);
+            } 
+
+            if (lx, ly) != (-1, -1) {
+                let (dx, dy) = (random_axis(x), y - 1);         
+                
+                match read_state.read_cell(lx, ly) {
+                    Cell::Air | Cell::Rocket{..} | Cell::Fire{..} => {},
+                    c => {
+                        write_state.write_cell(c.clone(), x, y, true);
+                        write_state.write_cell(Cell::Rocket{last_pos: (x, y), i: i - 1}, dx, dy, true);
+                    }
+                }
+            }
+            else {
+                match gravity(Cell::Rocket{last_pos: (lx, ly), i}, x, y, read_state, write_state) {
+                    GravityResult::OnGround => {
+                        write_state.write_cell(Cell::Rocket{last_pos: (x, y + 1), i: i}, x, y, true);
+                    }
+                    _ => {}
+                }
+            }            
         }
     }
 }
@@ -309,14 +342,14 @@ fn gravity(cell: Cell, x: i32, y: i32, read_state: &GameState, write_state: &mut
     }
     let new_x = x + sideways;
     let height = (read_state.size as i32) - 1;
-    if  new_y <= height && read_state.is_empty(x, new_y) /*&& write_state.is_empty(x, new_y)*/ {
+    if  new_y <= height && read_state.is_empty(x, new_y) {
         write_state.write_cell(cell, x, new_y, true);
         if x % REGION_SIZE == 0 || y % REGION_SIZE == 0 {
             write_state.mark_block_dirty(x - sideways, y - 1);
         }
         GravityResult::Falling
     }
-    else if new_y <= height && new_x >= 0 && new_x <= height && read_state.is_empty(new_x, new_y) /*&& write_state.is_empty(new_x, new_y)*/ {
+    else if new_y <= height && new_x >= 0 && new_x <= height && read_state.is_empty(new_x, new_y) {
          write_state.write_cell(cell, new_x, new_y, true);  
          if x & REGION_SIZE == 0 || y % REGION_SIZE == 0 {
             write_state.mark_block_dirty(x - sideways, y - 1);

@@ -81,7 +81,7 @@ impl<'a> GameState<'a> {
     pub fn reset_block(&mut self, x: i32, y: i32) {
         // TODO index blocks based on global x/y instead of block x/y?
         let r = Rect::new(x * REGION_SIZE,  y * REGION_SIZE, REGION_SIZE as u32, REGION_SIZE as u32);
-        self.texture.update(r, &vec![0u8; 16 * 16 * 24], 16 * 3);
+        self.texture.update(r, &vec![0u8; 16 * 16 * 24], 16 * 24);
         self.blocks.get_mut(&(x, y)).unwrap().clear();
     }
 
@@ -160,10 +160,12 @@ impl<'a> GameState<'a> {
         }         
     }
 
-    pub fn clear(&mut self) {
+    pub fn clear(&mut self) {        
         for (_, block) in self.blocks.iter_mut() {
             block.clear();
         }
+        let r = Rect::new(0,  0, render::MAP_SIZE as u32, render::MAP_SIZE as u32);
+        self.texture.update(r, &vec![0u8; (render::MAP_SIZE * render::MAP_SIZE * 24) as usize], 16 * 24);
     }
 }
 

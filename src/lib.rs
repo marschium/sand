@@ -47,7 +47,6 @@ pub fn start() {
 
     // TODO move?
     let mut spawner = RadialSpawner::new(5, 5);
-
     'running: loop {
         frame_start = Instant::now();
 

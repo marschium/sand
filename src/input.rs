@@ -32,6 +32,12 @@ pub fn update_spawner(event: Event, spawner: &mut RadialSpawner) {
         },
         Event::KeyDown {keycode: Some(Keycode::Y), ..} => {
             spawner.set_cell(Cell::Sand);
+        },
+        Event::KeyDown {keycode: Some(Keycode::U), ..} => {
+            spawner.set_cell(Cell::Rocket{last_pos: (-1, -1), i: -1});
+        },
+        Event::KeyDown {keycode: Some(Keycode::I), ..} => {
+            spawner.set_cell(Cell::Stone);
         }
         _ => {}
     }
@@ -46,6 +52,8 @@ pub fn get_key_bindings() -> Vec<(String, String)> {
         ("R".to_owned(), "Water".to_owned()),
         ("T".to_owned(), "Acid".to_owned()),
         ("Y".to_owned(), "Sand".to_owned()),
+        ("U".to_owned(), "Rocket".to_owned()),
+        ("I".to_owned(), "Stone".to_owned()),
         ("LMB".to_owned(), "Spawn".to_owned()),
         ("DEL".to_owned(), "Clear".to_owned()),
         ("ESC".to_owned(), "Exit".to_owned())
