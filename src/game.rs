@@ -123,7 +123,6 @@ impl<'a> GameState<'a> {
         match self.blocks.get(&(bx, by)) {
             Some(b) => {
                 b.get_cell(ix, iy)
-                //&b.cells[(ix + (iy * REGION_SIZE)) as usize]
             },
             None => {
                 &Cell::Air // Maybe a magic enum for boundary?

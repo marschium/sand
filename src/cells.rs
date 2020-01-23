@@ -26,13 +26,13 @@ impl RadialSpawner {
     pub fn new(x : i32, y: i32) -> RadialSpawner {
         let deltas = vec! [
             (0,0), (1,0), (2,0), (3,0), (4,0), (5,0), (6,0),
-            //(0,1), (1,1), (2,1), (3,1), (4,1), (5,1), (6,1),
+            (0,1), (1,1), (2,1), (3,1), (4,1), (5,1), (6,1),
         (0,2), (1,2), (2,2), (3,2), (4,2), (5,2), (6,2), (7,2), (8,2),
-        //(0,3), (1,3), (2,3), (3,3), (4,3), (5,3), (6,3), (7,3), (8,3),
+        (0,3), (1,3), (2,3), (3,3), (4,3), (5,3), (6,3), (7,3), (8,3),
         (0,4), (1,4), (2,4), (3,4), (4,4), (5,4), (6,4), (7,4), (8,4),
-        //(0,5), (1,5), (2,5), (3,5), (4,5), (5,5), (6,5), (7,5), (8,5),
+        (0,5), (1,5), (2,5), (3,5), (4,5), (5,5), (6,5), (7,5), (8,5),
         (0,6), (1,6), (2,6), (3,6), (4,6), (5,6), (6,6), (7,6), (8,6),
-            //(0,7), (1,7), (2,7), (3,7), (4,7), (5,7), (6,7),
+            (0,7), (1,7), (2,7), (3,7), (4,7), (5,7), (6,7),
             (0,8), (1,8), (2,8), (3,8), (4,8), (5,8), (6,8),
         ];
         RadialSpawner {
@@ -105,15 +105,12 @@ pub fn update_cell(cell: Cell, x: i32, y: i32, read_state: &GameState, write_sta
     }
 
     match cell {
-        Cell::Air => {}
+        Cell::Air => {},
         Cell::Sand => {
             if dissolve_in_acid(x, y, read_state, write_state) == AcidResult::Dissolved {
                 return;
             }
-            
-            // TODO swap sand and water tiles? or do it in the water update?
             let _ = gravity(Cell::Sand, x, y, read_state, write_state);
-
         },
         Cell::Wood => {
             if burn_near_fire(x, y, read_state, write_state) == FireResult::Burnt {
@@ -141,6 +138,7 @@ pub fn update_cell(cell: Cell, x: i32, y: i32, read_state: &GameState, write_sta
                 }
                 _ => {
                     write_state.write_cell(Cell::Fire{heat: heat - 1}, x, y, true);
+                    update_if_on_boundary(x, y, write_state);
                 }
             }
         },
@@ -262,6 +260,21 @@ enum AcidResult {
     Dissolved
 }
 
+fn update_if_on_boundary(x: i32, y: i32, write_state: &mut GameState) {
+    if x % REGION_SIZE == 0 {
+        write_state.mark_block_dirty(x - 1, y);
+    }
+    if y % REGION_SIZE == 0 {
+        write_state.mark_block_dirty(x, y - 1);
+    }
+    if x % REGION_SIZE == REGION_SIZE -1 {
+        write_state.mark_block_dirty(x + 1, y);
+    }
+    if y % REGION_SIZE == REGION_SIZE -1 {
+        write_state.mark_block_dirty(x, y + 1);
+    }
+}
+
 fn burn_near_fire(x: i32, y: i32, read_state: &GameState, write_state: &mut GameState) -> FireResult{
     let (dx, dy) = random_dir(x, y);
     match read_state.read_cell(dx, dy) {
@@ -296,14 +309,14 @@ fn gravity(cell: Cell, x: i32, y: i32, read_state: &GameState, write_state: &mut
     }
     let new_x = x + sideways;
     let height = (read_state.size as i32) - 1;
-    if  new_y <= height && read_state.is_empty(x, new_y) && write_state.is_empty(x, new_y) {
+    if  new_y <= height && read_state.is_empty(x, new_y) /*&& write_state.is_empty(x, new_y)*/ {
         write_state.write_cell(cell, x, new_y, true);
         if x % REGION_SIZE == 0 || y % REGION_SIZE == 0 {
             write_state.mark_block_dirty(x - sideways, y - 1);
         }
         GravityResult::Falling
     }
-    else if new_y <= height && new_x >= 0 && new_x <= height && read_state.is_empty(new_x, new_y)  && write_state.is_empty(new_x, new_y) {
+    else if new_y <= height && new_x >= 0 && new_x <= height && read_state.is_empty(new_x, new_y) /*&& write_state.is_empty(new_x, new_y)*/ {
          write_state.write_cell(cell, new_x, new_y, true);  
          if x & REGION_SIZE == 0 || y % REGION_SIZE == 0 {
             write_state.mark_block_dirty(x - sideways, y - 1);
