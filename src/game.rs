@@ -20,7 +20,7 @@ impl CellBlock {
         }
     }
 
-    fn set_cell(&mut self, cell: Cell, x: i32, y: i32) {
+    fn set_cell(&mut self, cell: Cell, x: i32, y: i32) {        
         self.cells.insert((x, y), cell);
     }
 
@@ -186,8 +186,6 @@ pub fn update(read_state: &GameState, write_state: &mut GameState, spawner: &mut
     for (_, block) in write_state.blocks.iter_mut() {
         block.dirty = false;
     }
-    
-    spawner.spawn(write_state);
 
     for (pos, block) in read_state.blocks.iter() {
         let block_offset = (pos.0 * REGION_SIZE, pos.1 * REGION_SIZE);
@@ -196,11 +194,8 @@ pub fn update(read_state: &GameState, write_state: &mut GameState, spawner: &mut
                 let world_pos = (i + block_offset.0, j + block_offset.1);
                 update_cell(c.clone(), world_pos.0, world_pos.1, read_state, write_state);
             }
-            // for (c, i, j) in block.cells.iter().enumerate().map(|(i, x)| {
-            //     let c = idx_to_coord(i);
-            //     (x, c.0, c.1)
-            // }){
-            // }
         }            
     }
+    
+    spawner.spawn(write_state);
 }
