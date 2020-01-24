@@ -14,6 +14,8 @@ pub enum Cell {
     Acid{t: i32},
     Rocket{last_pos: (i32, i32), i: i32},
     Stone,
+    Bomb,
+    Destroyed
 }
 
 pub struct RadialSpawner{
@@ -271,7 +273,26 @@ pub fn update_cell(cell: Cell, x: i32, y: i32, read_state: &GameState, write_sta
                     _ => {}
                 }
             }            
-        }
+        },
+        Cell::Bomb => {
+            match burn_near_fire(x, y, read_state, write_state) {
+                FireResult::Burnt => {
+                    destory_lineh(x - 4, y, 4, &mut rng, write_state);
+                    destory_lineh(x - 3, y, 8, &mut rng, write_state);
+                    destory_lineh(x - 2, y, 8, &mut rng, write_state);
+                    destory_lineh(x, y - 1, 16, &mut rng, write_state);
+                    destory_lineh(x, y, 16, &mut rng, write_state);
+                    destory_lineh(x, y + 1, 16, &mut rng, write_state);
+                    destory_lineh(x + 2, y, 8, &mut rng, write_state);
+                    destory_lineh(x + 3, y, 8, &mut rng, write_state);
+                    destory_lineh(x + 4, y, 4, &mut rng, write_state);
+                },
+                FireResult::Unaffected => {
+                    write_state.write_cell(Cell::Bomb, x, y, false);
+                }
+            }
+        },
+        Cell::Destroyed => {}
     }
 }
 
@@ -291,6 +312,18 @@ enum FireResult {
 enum AcidResult {
     Unaffected,
     Dissolved
+}
+
+fn destory_lineh(x: i32, y: i32, l: i32, rng: &mut ThreadRng, write_state: &mut GameState) {
+    for i in y - (l / 2)..y + (l / 2)
+    {
+        if rng.gen::<bool>() {
+            write_state.write_cell(Cell::Fire{heat: 30}, x, i, true);
+        }
+        else{
+            write_state.write_cell(Cell::Destroyed, x, i, true);
+        }
+    }
 }
 
 fn update_if_on_boundary(x: i32, y: i32, write_state: &mut GameState) {

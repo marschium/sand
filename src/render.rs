@@ -31,9 +31,12 @@ pub fn get_cell_color(cell: Cell) -> Color {
         },
         Cell::Rocket{..} => {
             Color::RGB(255, 255, 255)
-        }
+        },
         Cell::Stone => {
             Color::RGB(116, 116, 116)
+        },
+        Cell::Bomb => {
+            Color::RGB(116, 116, 16)
         }
         _ => Color::RGB(0, 0, 0)
     }
