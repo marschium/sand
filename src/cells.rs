@@ -1,4 +1,5 @@
 use rand::prelude::*;
+use rand::seq::SliceRandom;
 
 use crate::game::{GameState, REGION_SIZE};
 
@@ -89,14 +90,8 @@ impl Spawner for RadialSpawner {
 }
 
 pub fn random_axis(a: i32) -> i32 {
-    let mut da = a;
-    if rand::random() {
-        da = da - 1;
-    }
-    if rand::random() {
-        da = da + 1;
-    }
-    da
+    let choices = vec![-1, 0, 1];
+    a + choices.choose(&mut thread_rng()).unwrap()
 }
 
 pub fn random_dir(x: i32, y: i32) -> (i32, i32) {
@@ -181,6 +176,14 @@ pub fn update_cell(cell: Cell, x: i32, y: i32, read_state: &GameState, write_sta
             write_state.write_cell(Cell::Vine{growth: growth, grown: g}, x, y, !grown);
 
             if growth <= 0 || grown {
+                let (dx, dy) = random_dir(x, y);
+                match read_state.read_cell(dx, dy) {
+                    Cell::Water{..} => {
+                        write_state.write_cell(Cell::Air, dx, dy, false);
+                        write_state.write_cell(Cell::Vine{growth: 50, grown: false}, x, y, true);
+                    },
+                    _ => {}
+                }
                 return;
             }           
 
@@ -380,10 +383,8 @@ fn dissolve_in_acid(x: i32, y: i32, read_state: &GameState, write_state: &mut Ga
 
 fn gravity(cell: Cell, x: i32, y: i32, read_state: &GameState, write_state: &mut GameState) ->  GravityResult{
     let new_y = y + 1;
-    let mut sideways = - 1;
-    if rand::random() {
-        sideways =  1;
-    }
+    let choices = vec![-1, 0, 1];
+    let sideways = choices.choose(&mut thread_rng()).unwrap();
     let new_x = x + sideways;
     let height = (read_state.size as i32) - 1;
     if  new_y <= height && read_state.is_empty(x, new_y) {
