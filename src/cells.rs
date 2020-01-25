@@ -15,7 +15,8 @@ pub enum Cell {
     Rocket{last_pos: (i32, i32), i: i32},
     Stone,
     Bomb,
-    Destroyed
+    Destroyed,
+    Ice
 }
 
 pub struct RadialSpawner{
@@ -292,7 +293,17 @@ pub fn update_cell(cell: Cell, x: i32, y: i32, read_state: &GameState, write_sta
                 }
             }
         },
-        Cell::Destroyed => {}
+        Cell::Destroyed => {},
+        Cell::Ice => {
+            match burn_near_fire(x, y, read_state, write_state) {
+                FireResult::Burnt => {
+                    write_state.write_cell(Cell::Water{dx: 0}, x, y, true);
+                },
+                FireResult::Unaffected => {
+                    write_state.write_cell(Cell::Ice, x, y, false);
+                }
+            }
+        }
     }
 }
 

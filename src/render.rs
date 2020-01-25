@@ -1,7 +1,9 @@
+use rand::prelude::*;
 use sdl2::pixels::Color;
 use sdl2::rect::Rect;
 use sdl2::video::{Window, WindowContext};
 use sdl2::render::{Canvas, Texture, TextureCreator};
+use sdl2::rwops::RWops;
 use crate::cells::Cell;
 use crate::input;
 
@@ -18,13 +20,19 @@ pub fn get_cell_color(cell: Cell) -> Color {
             Color::RGB(116, 43, 0)
         },
         Cell::Fire{..} => {
+            if thread_rng().gen::<bool>() {
+                return Color::RGB(255, 102, 0);
+            }
             Color::RGB(255, 0, 0)
         },
         Cell::Seed | Cell::Vine{..} => {
             Color::RGB(0, 116, 11)
         },
         Cell::Water{..} => {
-            Color::RGB(16, 16, 116)
+            if thread_rng().gen::<bool>() {
+                return Color::RGB(102, 153, 255);
+            }
+            Color::RGB(0, 102, 255)
         },
         Cell::Acid{..} => {
             Color::RGB(16, 116, 16)
@@ -37,6 +45,9 @@ pub fn get_cell_color(cell: Cell) -> Color {
         },
         Cell::Bomb => {
             Color::RGB(116, 116, 16)
+        },
+        Cell::Ice => {
+            Color::RGB(102, 204, 255)
         }
         _ => Color::RGB(0, 0, 0)
     }
@@ -50,7 +61,8 @@ pub struct Hud<'a> {
 impl<'a> Hud<'a> { 
     pub fn new(texture_creator: &TextureCreator<WindowContext>) -> Hud {
         let ttf_context = sdl2::ttf::init().map_err(|e| e.to_string()).unwrap();
-        let mut font = ttf_context.load_font("Jazz_Ball_Regular.ttf", 32).unwrap();
+        let bytes = include_bytes!("../Jazz_Ball_Regular.ttf");
+        let font = ttf_context.load_font_from_rwops(RWops::from_bytes(bytes).unwrap(), 32).unwrap();
         
         let mut keybinding_textures = Vec::new(); 
         for (key, element) in input::get_key_bindings() {
