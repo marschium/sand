@@ -178,7 +178,7 @@ pub fn update_cell(cell: Cell, x: i32, y: i32, read_state: &GameState, write_sta
             if growth <= 0 || grown {
                 let (dx, dy) = random_dir(x, y);
                 match read_state.read_cell(dx, dy) {
-                    Cell::Water{..} => {
+                    Cell::Water{..} | Cell::Seed => {
                         write_state.write_cell(Cell::Air, dx, dy, false);
                         write_state.write_cell(Cell::Vine{growth: 50, grown: false}, x, y, true);
                     },
@@ -281,15 +281,15 @@ pub fn update_cell(cell: Cell, x: i32, y: i32, read_state: &GameState, write_sta
         Cell::Bomb => {
             match burn_near_fire(x, y, read_state, write_state) {
                 FireResult::Burnt => {
-                    destory_lineh(x - 4, y, 4, &mut rng, write_state);
-                    destory_lineh(x - 3, y, 8, &mut rng, write_state);
-                    destory_lineh(x - 2, y, 8, &mut rng, write_state);
-                    destory_lineh(x, y - 1, 16, &mut rng, write_state);
-                    destory_lineh(x, y, 16, &mut rng, write_state);
-                    destory_lineh(x, y + 1, 16, &mut rng, write_state);
-                    destory_lineh(x + 2, y, 8, &mut rng, write_state);
-                    destory_lineh(x + 3, y, 8, &mut rng, write_state);
-                    destory_lineh(x + 4, y, 4, &mut rng, write_state);
+                    destory_lineh(x - 4, y, 16, &mut rng, write_state);
+                    destory_lineh(x - 3, y, 16, &mut rng, write_state);
+                    destory_lineh(x - 2, y, 32, &mut rng, write_state);
+                    destory_lineh(x, y - 1, 32, &mut rng, write_state);
+                    destory_lineh(x, y, 32, &mut rng, write_state);
+                    destory_lineh(x, y + 1, 32, &mut rng, write_state);
+                    destory_lineh(x + 2, y, 32, &mut rng, write_state);
+                    destory_lineh(x + 3, y, 16, &mut rng, write_state);
+                    destory_lineh(x + 4, y, 16, &mut rng, write_state);
                 },
                 FireResult::Unaffected => {
                     write_state.write_cell(Cell::Bomb, x, y, false);

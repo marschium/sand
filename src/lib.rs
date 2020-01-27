@@ -97,21 +97,21 @@ pub fn start() {
 
         // LOG
         frame_log_timer = frame_log_timer.add(frame_start.elapsed());
-        if frame_log_timer >= Duration::from_millis(1000) {
-            println!("FPS: {}", frames);
+        // if frame_log_timer >= Duration::from_millis(1000) {
+        //     println!("FPS: {}", frames);
 
-            let mut sum : u128 =  update_times.iter().sum();
-            let mut avg =  sum as f64 /  update_times.len() as f64;
-            println!("Update: {}", avg);
+        //     let mut sum : u128 =  update_times.iter().sum();
+        //     let mut avg =  sum as f64 /  update_times.len() as f64;
+        //     println!("Update: {}", avg);
 
-            sum = draw_times.iter().sum();
-            avg = sum as f64 / draw_times.len() as f64;
-            println!("Draw: {}", avg);
+        //     sum = draw_times.iter().sum();
+        //     avg = sum as f64 / draw_times.len() as f64;
+        //     println!("Draw: {}", avg);
 
-            frames = 0;
-            frame_log_timer = Duration::from_millis(0);
-            update_times.clear();
-            draw_times.clear();
-        }
+        //     frames = 0;
+        //     frame_log_timer = Duration::from_millis(0);
+        //     update_times.clear();
+        //     draw_times.clear();
+        // }
     }
 }

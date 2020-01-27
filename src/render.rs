@@ -14,6 +14,9 @@ pub const MOUSE_RATIO: f32 = MAP_SIZE as f32 / SCREEN_SIZE as f32;
 pub fn get_cell_color(cell: Cell) -> Color {
     match cell {
         Cell::Sand => {
+            if thread_rng().gen::<bool>() {
+                return Color::RGB(164, 140, 3);
+            }
             Color::RGB(180, 155, 3)
         },
         Cell::Wood{..} => {
@@ -25,9 +28,12 @@ pub fn get_cell_color(cell: Cell) -> Color {
             }
             Color::RGB(255, 0, 0)
         },
-        Cell::Seed | Cell::Vine{..} => {
+        Cell::Seed => {
             Color::RGB(0, 116, 11)
         },
+        Cell::Vine{growth, ..} => {
+            Color::RGB(0, 116 - (growth as u8), 11)
+        }
         Cell::Water{..} => {
             if thread_rng().gen::<bool>() {
                 return Color::RGB(102, 153, 255);
