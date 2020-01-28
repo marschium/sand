@@ -35,8 +35,8 @@ pub fn get_cell_color(cell: Cell) -> Color {
             Color::RGB(0, 116 - (growth as u8), 11)
         }
         Cell::Water{..} => {
-            if thread_rng().gen::<bool>() {
-                return Color::RGB(102, 153, 255);
+            if thread_rng().gen::<f32>() < 0.125 {
+                return Color::RGB(0, 126, 255);
             }
             Color::RGB(0, 102, 255)
         },
