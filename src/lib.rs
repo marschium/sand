@@ -7,6 +7,7 @@ use sdl2::pixels::Color;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use std::time::{Instant, Duration};
+use sdl2::pixels::PixelFormatEnum;
 
 
 mod game;
@@ -32,8 +33,8 @@ pub fn start() {
 
     let hud = render::Hud::new(&texture_creator);
 
-    let tex_a = texture_creator.create_texture_target(None, render::MAP_SIZE as u32, render::MAP_SIZE as u32).map_err(|x| x.to_string()).unwrap();
-    let tex_b = texture_creator.create_texture_target(None, render::MAP_SIZE as u32, render::MAP_SIZE as u32).map_err(|x| x.to_string()).unwrap();
+    let tex_a = texture_creator.create_texture_target(PixelFormatEnum::RGB24, render::MAP_SIZE as u32, render::MAP_SIZE as u32).map_err(|x| x.to_string()).unwrap();
+    let tex_b = texture_creator.create_texture_target(PixelFormatEnum::RGB24, render::MAP_SIZE as u32, render::MAP_SIZE as u32).map_err(|x| x.to_string()).unwrap();
 
     let mut read_state = game::GameState::new(render::MAP_SIZE, tex_a);
     let mut write_state = game::GameState::new(render::MAP_SIZE,tex_b);
@@ -81,6 +82,7 @@ pub fn start() {
         write_state = tmp;
 
         // DRAW
+        canvas.clear();
         let draw_time = Instant::now();
         canvas.copy(&read_state.get_tex(), None, Rect::new(0, 0, 512, 512)).unwrap();
         hud.draw(&mut canvas);

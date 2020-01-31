@@ -81,7 +81,7 @@ impl<'a> GameState<'a> {
     pub fn reset_block(&mut self, x: i32, y: i32) {
         // TODO index blocks based on global x/y instead of block x/y?
         let r = Rect::new(x * REGION_SIZE,  y * REGION_SIZE, REGION_SIZE as u32, REGION_SIZE as u32);
-        self.texture.update(r, &vec![0u8; 16 * 16 * 24], 16 * 24);
+        self.texture.update(r, &vec![255u8; 16 * 16 * 3], 16 * 3);
         self.blocks.get_mut(&(x, y)).unwrap().clear();
     }
 
@@ -102,7 +102,6 @@ impl<'a> GameState<'a> {
         match self.blocks.get(&(bx, by)) {
             Some(b) => {
                 return b.get_cell(ix, iy) == &Cell::Air;
-                //return b.cells[(ix + (iy * REGION_SIZE)) as usize] == Cell::Air
             },
             None => {
                 return false;
@@ -117,7 +116,7 @@ impl<'a> GameState<'a> {
         let iy = y % REGION_SIZE;
 
         if ix < 0 || ix >= REGION_SIZE || iy < 0 || iy >= REGION_SIZE {
-            return &Cell::Air; // Maybe a magic enum for boundary?
+            return &Cell::Air;
         }
 
         match self.blocks.get(&(bx, by)) {
@@ -125,7 +124,7 @@ impl<'a> GameState<'a> {
                 b.get_cell(ix, iy)
             },
             None => {
-                &Cell::Air // Maybe a magic enum for boundary?
+                &Cell::Air
             }
         }
     }
@@ -146,13 +145,12 @@ impl<'a> GameState<'a> {
                     b.dirty = dirty;
                 }
                 b.set_cell(cell, ix, iy);
-                //b.cells[(ix + (iy * REGION_SIZE)) as usize] = cell;
                 match cell {
                     Cell::Air => {},
                     _ => {
                         let r = Rect::new( x, y, 1, 1);
                         let c = render::get_cell_color(cell);
-                        self.texture.update(r, &vec![c.b, c.g, c.r], 3); // TODO set position and color
+                        self.texture.update(r, &vec![c.r, c.g, c.b], 3);
                     }
                 }
             },
@@ -165,7 +163,7 @@ impl<'a> GameState<'a> {
             block.clear();
         }
         let r = Rect::new(0,  0, render::MAP_SIZE as u32, render::MAP_SIZE as u32);
-        self.texture.update(r, &vec![0u8; (render::MAP_SIZE * render::MAP_SIZE * 24) as usize], 16 * 24);
+        self.texture.update(r, &vec![0u8; (render::MAP_SIZE * render::MAP_SIZE * 3) as usize], 256 * 3);
     }
 }
 
